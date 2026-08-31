@@ -61,6 +61,8 @@ Then, each turn:
    node $T claim --ticket <id> --model sonnet
    ```
    It prints the branch and base to build on. Add `--redispatch` only to replace a teammate that is gone.
+
+   By default each ticket lands on the repository's default branch as it finishes, which is what a tracer-bullet ticket is sized for. To hold a run back until it is whole, claim every ticket with `--base <branch>` instead, and see Landing on a branch below.
 3. **Dispatch them all in one message**, one `Agent` call per ticket. The parallelism lives here: spawning one at a time and waiting between makes the whole run serial for nothing.
 4. **Take each return.** Verify it, record it, merge it. See below.
 5. Back to step 1.
@@ -142,6 +144,15 @@ Monitor(command: "node $T watch --epic <id>", description: "<epic name> tickets"
 ```
 
 It emits one line per thing worth acting on, including a teammate that went quiet without opening a PR, and exits when every ticket is closed. Polling is conditional, so most of it costs nothing.
+
+## Landing on a branch
+
+`claim --base <branch>` sends a ticket's work to an integration branch rather than the default one. Give **every** ticket in the run the same base: the frontier reports a run whose claimed tickets disagree, because one run lands in one place.
+
+Two things differ once you do, and the checks carry both:
+
+- A merge into that branch does not close its ticket, so close it yourself once the PR is in. `check-merged` stays red until you do, and nothing the ticket blocks starts before then.
+- When the frontier reports the run finished, the work is on that branch. Open one pull request from it to land the whole run.
 
 ## Cost
 
