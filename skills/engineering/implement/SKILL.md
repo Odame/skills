@@ -1,7 +1,6 @@
 ---
 name: implement
-description: "Implement a piece of work based on a spec or set of tickets."
-disable-model-invocation: true
+description: Implement the work described by a spec or a ticket, test-first at pre-agreed seams, reviewed before it is committed. Use when handed a spec or ticket to build, or when a teammate is briefed to build one.
 ---
 
 Implement the work described by the user in the spec or tickets.
