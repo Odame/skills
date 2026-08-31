@@ -12,7 +12,20 @@
 
 [![skills.sh](https://skills.sh/b/mattpocock/skills)](https://skills.sh/mattpocock/skills)
 
-My agent skills that I use every day to do real engineering - not vibe coding.
+> ### A fork of [mattpocock/skills](https://github.com/mattpocock/skills)
+>
+> Every skill here is **[Matt Pocock](https://www.aihero.dev)'s** work, used under
+> his [MIT licence](./LICENSE). This copy exists only to carry a few local
+> changes, each one listed in **[PATCHES.md](./PATCHES.md)**. Everything else
+> tracks his repo and is rebased onto it.
+>
+> Start at [the original](https://github.com/mattpocock/skills), and
+> [join his newsletter](https://www.aihero.dev/s/skills-newsletter) if these are
+> useful to you. Send bugs and ideas about the skills themselves upstream, not here.
+>
+> Everything written below this box is Matt's, kept in his words.
+
+Matt's agent skills for real engineering - not vibe coding.
 
 Developing real applications is hard. Approaches like GSD, BMAD, and Spec-Kit try to help by owning the process. But while doing so, they take away your control and make bugs in the process hard to resolve.
 
@@ -24,24 +37,31 @@ If you want to keep up with changes to these skills, and any new ones I create, 
 
 ## Installation (30-second setup)
 
-Two ways in, two philosophies. **The [Claude Code plugin](https://code.claude.com/docs/en/plugins)** installs the whole set as a managed, read-only bundle that updates when I ship, so you subscribe rather than fork. **[skills.sh](https://skills.sh/mattpocock/skills)** copies editable skill files into your project, so you can hack on them and make them your own. Pick one: installing both leaves you with every skill twice.
+Two ways in, two philosophies. **The [Claude Code plugin](https://code.claude.com/docs/en/plugins)** installs the whole set as a managed bundle that updates when I ship. (This fork publishes its own marketplace; see below.) **[skills.sh](https://skills.sh/mattpocock/skills)** copies editable skill files into your project, so you can hack on them and make them your own. Pick one: installing both leaves you with every skill twice.
 
 ### 1. Get the skills
 
 <details>
 <summary><strong>Claude Code</strong></summary>
 
+This fork:
+
 ```bash
-claude plugins install mattpocock-skills
+claude plugin marketplace add Odame/skills
+claude plugin install mattpocock-skills@odame
 ```
 
-Or, from inside a session:
+The plugin keeps the name `mattpocock-skills`, so every slash command is the one
+Matt documents. Only the marketplace id differs.
 
-```
-/plugin install mattpocock-skills
+Matt's original, with none of the local changes:
+
+```bash
+claude plugin install mattpocock-skills
 ```
 
-It's in Claude Code's official marketplace, so there's nothing to add first, and updates arrive automatically.
+That one is in Claude Code's official marketplace, so there's nothing to add first.
+Installing both leaves you with every skill twice.
 
 </details>
 
@@ -80,6 +100,27 @@ In your agent, run it once per repo. It will:
 - Ask you where you want to save any docs we create
 
 ### 3. Bam - you're ready to go.
+
+## What's different in this fork
+
+Two skills diverge from upstream. [PATCHES.md](./PATCHES.md) is the record, with
+the reasoning for each.
+
+- **[`grilling`](./skills/productivity/grilling/SKILL.md)** puts the frontier to
+  you one question at a time, through the native ask-user-question tool, instead
+  of a numbered batch. `grill-me` and `grill-with-docs` both delegate here, so
+  they inherit it.
+- **[`implement`](./skills/engineering/implement/SKILL.md)** turns the spec or
+  ticket acceptance criteria into an [unlazy](https://github.com/Leonxlnx/unlazy)
+  ledger before coding, and re-verifies it before reporting the work done.
+
+`scripts/verify-patches.mjs` checks both directions of every divergence: that its
+text is present, and that upstream's superseded text has not come back. A rebase
+that quietly drops one turns it red. `.claude/skills/sync-upstream/SKILL.md`
+drives the rebase and refuses to publish while it is.
+
+A divergence exists to be deleted. When Matt's version does the same job, the
+local change is retired rather than defended.
 
 ## Why These Skills Exist
 
