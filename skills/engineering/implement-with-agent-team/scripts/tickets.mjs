@@ -26,6 +26,7 @@ const USAGE = `usage: tickets.mjs <command> [options]
   frontier      --epic <id> | --tickets <ids>   what is takeable, and what each ticket needs
   watch         --epic <id> | --tickets <ids>   emit one line per change; exits when finished
   claim         --ticket <id> --model <m>       take a ticket, and print the branch to build on
+                [--base <branch>]              land the run on an integration branch, not the default
   return        --ticket <id> --pr <n>          record that a teammate returned
   hand-back     --ticket <id> --stuck --reason <text>
   hand-back     --ticket <id> --blocked-on <id> --reason <text>
@@ -126,7 +127,7 @@ async function ticketSet(options) {
 async function claimRecord(ticket) {
   const comments = await api(
     "repos/" + ticket.repo + "/issues/" + ticket.number + "/comments?per_page=100", { paginate: true });
-  const record = { status: null, branch: null, since: null, pr: null };
+  const record = { status: null, branch: null, base: null, since: null, pr: null };
   for (const comment of comments) {
     const body = String(comment.body || "");
     for (const marker of MARKERS) {
@@ -135,6 +136,8 @@ async function claimRecord(ticket) {
       record.since = comment.created_at;
       const branch = /Branch `([^`]+)`/.exec(body);
       if (branch) record.branch = branch[1];
+      const base = /off `([^`]+)`/.exec(body);
+      if (base) record.base = base[1];
       const pr = /PR #(\d+)/.exec(body);
       if (pr) record.pr = Number(pr[1]);
     }
@@ -155,6 +158,7 @@ async function resolveStatuses(tickets) {
     const record = await claimRecord(ticket);
     ticket.claim = record;
     if (record.branch) ticket.branch = record.branch;
+    ticket.base = record.base;
     ticket.pr = record.pr;
     // STUCK outranks BLOCKED: a blocked ticket is expected to free itself, and
     // showing that for one that will not is the more expensive wrong answer.
@@ -176,6 +180,7 @@ function printTable(tickets) {
     if (ticket.status === "BLOCKED") note = "  blocked by " + ticket.openBlockers.join(", ");
     else if (ticket.stale) note = "  claimed " + ticket.claimedMinutes + " min ago, still no PR";
     else if (ticket.status === "READY") note = "  branch " + ticket.branch;
+    if (ticket.base && ticket.base !== defaultBranches.get(ticket.repo)) note += "  onto " + ticket.base;
     else if (ticket.pr) note = "  PR #" + ticket.pr;
     console.log(ticket.status.padEnd(9) + asKey(ticket).padEnd(width + 2) + ticket.title + note);
   }
@@ -193,13 +198,27 @@ function summarise(tickets) {
 
 async function commandFrontier(options) {
   const tickets = await resolveStatuses(await ticketSet(options));
+  // The default branch is what "not an integration branch" is measured against,
+  // so it has to be known before anything is compared to it.
+  await Promise.all([...new Set(tickets.map((ticket) => ticket.repo))].map(defaultBranch));
   if (options.json) { console.log(JSON.stringify(tickets, null, 2)); }
   else printTable(tickets);
+
+  const bases = [...new Set(tickets.filter((ticket) => ticket.base).map((ticket) => ticket.base))].sort();
+  const integration = bases.filter((base) => base !== defaultBranches.get(tickets[0].repo));
+  if (bases.length > 1) {
+    console.log("MIXED BASES: claimed tickets target " + bases.join(" and ") +
+      ". One run lands in one place, so retarget the odd PRs before merging anything.");
+  }
 
   const outstanding = tickets.filter((ticket) => ticket.status !== "DONE");
   if (!outstanding.length) {
     console.log("EPIC COMPLETE: " + tickets.length + " tickets, all closed.");
-    return 0;
+    if (integration.length === 1) {
+      console.log("The work is on `" + integration[0] + "`, not the default branch. " +
+        "Open one PR from it to land the run.");
+    }
+    return bases.length > 1 ? 2 : 0;
   }
   console.log("WORK REMAINS: " + summarise(tickets) + ".");
   const stale = tickets.filter((ticket) => ticket.stale);
@@ -227,8 +246,17 @@ async function commandPreflight(options) {
   console.log("tickets    " + tickets.length + " in the set");
 
   for (const repo of [...new Set(tickets.map((ticket) => ticket.repo))].sort()) {
-    const branch = await defaultBranch(repo);
-    console.log("base       " + repo + " -> " + branch);
+    const branch = options.base || (await defaultBranch(repo));
+    const missing = options.base && !(await branchExists(repo, options.base));
+    console.log("base       " + repo + " -> " + branch + (missing ? "   MISSING" : ""));
+    if (missing) {
+      problems.push("`" + options.base + "` does not exist in " + repo + ". Every repository in the run " +
+        "needs the branch before a ticket can be claimed against it.");
+    }
+  }
+  if (options.base) {
+    note("on an integration branch a merge does not close its ticket, so each one is closed by hand; " +
+      "check-merged holds the run until that happens");
   }
 
   // GitHub refuses any blocked-by edge that would close a cycle, including
@@ -285,6 +313,16 @@ async function onlyTicket(options) {
   return { ...reference, title: issue.title, state: issue.state, id: issue.id };
 }
 
+async function branchExists(repo, branch) {
+  return (await api("repos/" + repo + "/branches/" + encodeURIComponent(branch),
+    { tolerate: true })) !== null;
+}
+
+/** The base a ticket is built on: what it was claimed against, else the repo default. */
+async function baseFor(ticket, record) {
+  return (record && record.base) || (await defaultBranch(ticket.repo));
+}
+
 async function postComment(ticket, body) {
   await gh(["api", "--method", "POST",
     "repos/" + ticket.repo + "/issues/" + ticket.number + "/comments", "-f", "body=" + body]);
@@ -300,11 +338,20 @@ async function commandClaim(options) {
     return 2;
   }
   const branch = record.branch || branchFor(ticket);
-  const base = await defaultBranch(ticket.repo);
+  const base = options.base || record.base || (await defaultBranch(ticket.repo));
+  if (!(await branchExists(ticket.repo, base))) {
+    console.log("NO SUCH BASE: `" + base + "` does not exist in " + ticket.repo + ".");
+    console.log("Create it and push it before claiming, or drop --base to build on the default branch.");
+    return 2;
+  }
   await postComment(ticket,
     MARKERS[0].lead + "\n\nBranch `" + branch + "`, off `" + base + "`. Model " + options.model + ".");
   console.log("branch " + branch);
   console.log("base   " + base);
+  if (base !== (await defaultBranch(ticket.repo))) {
+    console.log("note   merging into `" + base + "` will not close #" + ticket.number + " on its own, " +
+      "so close it after the merge; check-merged holds the run until you do.");
+  }
   console.log("CLAIMED " + asKey(ticket));
   return 0;
 }
@@ -369,14 +416,24 @@ async function commandCheckPr(options) {
   const closes = node.closingIssuesReferences.nodes.map((one) => one.number);
   const rollup = node.statusCheckRollup.nodes[0]?.commit?.statusCheckRollup?.state || "NONE";
 
-  console.log("closes     " + (closes.length ? closes.map((one) => "#" + one).join(", ") : "nothing"));
-  if (!closes.includes(ticket.number)) {
-    problems.push("PR #" + pull.number + " does not close #" + ticket.number + ". Merging it would leave the " +
-      "ticket open and the run would never advance past it. Add `Closes #" + ticket.number + "` to the PR body.");
+  const base = await baseFor(ticket, await claimRecord(ticket));
+  const onDefault = base === (await defaultBranch(ticket.repo));
+
+  // A closing keyword is only recorded for a pull request targeting the default
+  // branch, so off one there is nothing to read and its absence proves nothing.
+  // The branch ties the pull request to its ticket either way.
+  if (onDefault) {
+    console.log("closes     " + (closes.length ? closes.map((one) => "#" + one).join(", ") : "nothing"));
+    if (!closes.includes(ticket.number)) {
+      problems.push("PR #" + pull.number + " does not close #" + ticket.number + ". Merging it would leave " +
+        "the ticket open and the run would never advance past it. Add `Closes #" + ticket.number +
+        "` to the PR body.");
+    }
+  } else {
+    console.log("closes     not recorded off the default branch; close #" + ticket.number + " after merging");
   }
 
-  const base = await defaultBranch(ticket.repo);
-  console.log("base       " + pull.baseRefName);
+  console.log("base       " + pull.baseRefName + (pull.baseRefName === base ? "" : "  (claimed on " + base + ")"));
   if (pull.baseRefName !== base) {
     problems.push("PR #" + pull.number + " targets `" + pull.baseRefName + "`, not `" + base + "`. Retarget it.");
   }
@@ -403,7 +460,9 @@ async function commandCheckPr(options) {
     console.log("CHECK FAILED (" + problems.length + ")");
     return 2;
   }
-  console.log("PR OK: #" + pull.number + " closes #" + ticket.number + ", green, and mergeable.");
+  console.log("PR OK: #" + pull.number + " is green and mergeable, and " + (onDefault
+    ? "closes #" + ticket.number + " on merge."
+    : "targets `" + base + "`, so close #" + ticket.number + " yourself after merging."));
   return 0;
 }
 
@@ -419,8 +478,14 @@ async function commandCheckMerged(options) {
     return 0;
   }
   if (pull && pull.state === "MERGED" && issue.state === "open") {
-    console.log("- PR #" + pull.number + " merged but #" + ticket.number + " is still open, so the run will " +
-      "never advance past it. Close the ticket, and add a closing keyword to the next PR.");
+    const base = await baseFor(ticket, await claimRecord(ticket));
+    const onDefault = base === (await defaultBranch(ticket.repo));
+    console.log("- PR #" + pull.number + " merged but #" + ticket.number + " is still open, so nothing it " +
+      "blocks can start. Close it now: gh issue close " + ticket.number + " --repo " + ticket.repo +
+      (onDefault
+        ? "\n- Then add a closing keyword to the next PR, so the merge does this itself."
+        : "\n- Expected on `" + base + "`: a closing keyword only fires when the PR merges into the " +
+          "default branch, so every ticket on an integration branch is closed by hand."));
   } else if (!pull || pull.state !== "MERGED") {
     console.log("- Nothing merged for #" + ticket.number + " yet. Run check-pr, then merge.");
   }
@@ -490,7 +555,7 @@ if (!command || command === "--help" || command === "-h") { console.log(USAGE); 
 const options = {};
 const FLAGS = {
   "--epic": "epic", "--tickets": "tickets", "--repo": "repo", "--ticket": "ticket",
-  "--model": "model", "--pr": "pr", "--reason": "reason", "--blocked-on": "blockedOn",
+  "--model": "model", "--pr": "pr", "--reason": "reason", "--blocked-on": "blockedOn", "--base": "base",
   "--note": "note", "--interval": "interval",
 };
 for (let index = 0; index < argv.length; index++) {
