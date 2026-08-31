@@ -23,6 +23,12 @@ const divergences = [
     absent: [],
   },
   {
+    name: "the repo-local skills are tracked",
+    file: ".gitignore",
+    present: [".claude/*", "!.claude/skills/"],
+    absent: [],
+  },
+  {
     name: "the marketplace is named for this fork",
     file: ".claude-plugin/marketplace.json",
     present: ['"name": "odame"'],
