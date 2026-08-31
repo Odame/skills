@@ -112,7 +112,16 @@ the reasoning for each.
   they inherit it.
 - **[`implement`](./skills/engineering/implement/SKILL.md)** turns the spec or
   ticket acceptance criteria into an [unlazy](https://github.com/Leonxlnx/unlazy)
-  ledger before coding, and re-verifies it before reporting the work done.
+  ledger before coding, and re-verifies it before reporting the work done. It is
+  also model-invocable here, so a teammate can reach it on its own.
+
+One skill has no upstream counterpart:
+
+- **[`implement-with-agent-team`](./skills/engineering/implement-with-agent-team/SKILL.md)**
+  builds a set of tickets in parallel, as far as their blocking edges allow, with
+  one fresh teammate per ticket. It keeps no state of its own: the graph is the
+  tickets' native blocked-by links, progress is open versus closed, and a merged
+  PR closes its ticket. A lead that missed a notification therefore loses nothing.
 
 `scripts/verify-patches.mjs` checks both directions of every divergence: that its
 text is present, and that upstream's superseded text has not come back. A rebase
@@ -239,11 +248,12 @@ Skills I use daily for code work.
 - **[setup-matt-pocock-skills](./skills/engineering/setup-matt-pocock-skills/SKILL.md)**: Configure this repo for the engineering skills (issue tracker, triage labels, domain doc layout). Run once per repo before using the other engineering skills.
 - **[to-spec](./skills/engineering/to-spec/SKILL.md)**: Turn the current conversation into a spec and publish it to the issue tracker. No interview, just synthesizes what you've already discussed.
 - **[to-tickets](./skills/engineering/to-tickets/SKILL.md)**: Break any plan, spec, or conversation into a set of tracer-bullet tickets, each declaring its blocking edges, written as text in a local file, or as native blocking links on a real tracker.
-- **[implement](./skills/engineering/implement/SKILL.md)**: Build the work described by a spec or set of tickets, driving `/tdd` at pre-agreed seams and closing out with `/code-review` before committing.
+- **[implement-with-agent-team](./skills/engineering/implement-with-agent-team/SKILL.md)**: Build a set of tickets in parallel with one fresh teammate each, as far as their blocking edges allow. Keeps no state of its own: the tracker holds the graph, the progress and the completion.
 - **[wayfinder](./skills/engineering/wayfinder/SKILL.md)**: Plan a huge chunk of work, more than one agent session can hold, as a shared map of decision tickets on the issue tracker, and resolve them one at a time until the way to the destination is clear.
 
 **Model-invoked**
 
+- **[implement](./skills/engineering/implement/SKILL.md)**: Build the work described by a spec or a ticket, driving `/tdd` at pre-agreed seams and closing out with `/code-review` before committing.
 - **[prototype](./skills/engineering/prototype/SKILL.md)**: Build a throwaway prototype to answer a design question, either a single shareable HTML file for state/logic questions, or several radically different UI variations toggleable from one route.
 - **[diagnosing-bugs](./skills/engineering/diagnosing-bugs/SKILL.md)**: Disciplined diagnosis loop for hard bugs and performance regressions: build a feedback loop that goes red on this bug → minimise → hypothesise → instrument → fix → regression-test.
 - **[research](./skills/engineering/research/SKILL.md)**: Investigate a question against high-trust primary sources and capture the findings as a cited Markdown file in the repo, run as a background agent.
