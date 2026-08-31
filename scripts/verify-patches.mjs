@@ -44,6 +44,18 @@ const divergences = [
     absent: ["Dispatched to an implementation agent", "**Stuck.**", "**Released.**"],
   },
   {
+    name: "releases are cut from this fork, not upstream",
+    file: ".changeset/config.json",
+    present: ['"repo": "Odame/skills"'],
+    absent: ['"repo": "mattpocock/skills"'],
+  },
+  {
+    name: "package metadata names this fork",
+    file: "package.json",
+    present: ["https://github.com/Odame/skills"],
+    absent: ["https://github.com/mattpocock/skills"],
+  },
+  {
     name: "the repo-local skills are tracked",
     file: ".gitignore",
     present: [".claude/*", "!.claude/skills/"],
