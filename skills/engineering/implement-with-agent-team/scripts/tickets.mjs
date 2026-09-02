@@ -5,6 +5,7 @@
 // runs, so any agent asking the same question gets the same answer.
 
 import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -968,22 +969,45 @@ function parseArguments(argv) {
   return options;
 }
 
-const argv = process.argv.slice(2);
-const command = argv.shift();
+async function main() {
+  const argv = process.argv.slice(2);
+  const command = argv.shift();
 
-if (!command || command === "--help" || command === "-h") {
-  console.log(USAGE);
-  process.exit(0);
+  if (!command || command === "--help" || command === "-h") {
+    console.log(USAGE);
+    process.exit(0);
+  }
+  if (!COMMANDS[command]) usageError(`unknown command ${command}`);
+
+  const options = parseArguments(argv);
+
+  if (SET_COMMANDS.has(command) && !options.epic === !options.tickets) {
+    usageError(`${command} needs exactly one of --epic or --tickets`);
+  }
+  if (!SET_COMMANDS.has(command) && !options.ticket) {
+    usageError(`${command} needs --ticket owner/repo#123`);
+  }
+
+  process.exit(await COMMANDS[command](options));
 }
-if (!COMMANDS[command]) usageError(`unknown command ${command}`);
 
-const options = parseArguments(argv);
-
-if (SET_COMMANDS.has(command) && !options.epic === !options.tickets) {
-  usageError(`${command} needs exactly one of --epic or --tickets`);
-}
-if (!SET_COMMANDS.has(command) && !options.ticket) {
-  usageError(`${command} needs --ticket owner/repo#123`);
+// import.meta.main is undefined on Node < 22.12 (still active on this
+// machine), where it reads as falsy and the CLI would silently never run.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await main();
 }
 
-process.exit(await COMMANDS[command](options));
+export {
+  parseReference,
+  asKey,
+  issuePath,
+  slugOf,
+  branchFor,
+  asTicket,
+  readMarker,
+  noteFor,
+  countOf,
+  summarise,
+  nextMove,
+  graphShape,
+};
