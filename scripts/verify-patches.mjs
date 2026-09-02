@@ -41,7 +41,11 @@ const divergences = [
     name: "SKILL.md names commands, not their representation",
     file: "skills/engineering/implement-with-agent-team/SKILL.md",
     present: ["node $T claim", "node $T check-pr", "node $T hand-back"],
-    absent: ["Dispatched to an implementation agent", "**Stuck.**", "**Released.**"],
+    absent: [
+      "Dispatched to an implementation agent",
+      "**Stuck.**",
+      "**Released.**",
+    ],
   },
   {
     name: "releases are cut from this fork, not upstream",
@@ -76,18 +80,38 @@ for (const divergence of divergences) {
   try {
     text = readFileSync(join(repository, divergence.file), "utf8");
   } catch (error) {
-    failures.push(divergence.name + ": cannot read " + divergence.file + " (" + error.code + "). " +
-      "Upstream may have moved or renamed it; re-apply the divergence at its new path and update this script.");
+    failures.push(
+      divergence.name +
+        ": cannot read " +
+        divergence.file +
+        " (" +
+        error.code +
+        "). " +
+        "Upstream may have moved or renamed it; re-apply the divergence at its new path and update this script.",
+    );
     continue;
   }
   for (const needle of divergence.present) {
     if (!text.includes(needle)) {
-      failures.push(divergence.name + ": " + divergence.file + " no longer contains " + JSON.stringify(needle));
+      failures.push(
+        divergence.name +
+          ": " +
+          divergence.file +
+          " no longer contains " +
+          JSON.stringify(needle),
+      );
     }
   }
   for (const needle of divergence.absent) {
     if (text.includes(needle)) {
-      failures.push(divergence.name + ": " + divergence.file + " has upstream's " + JSON.stringify(needle) + " back");
+      failures.push(
+        divergence.name +
+          ": " +
+          divergence.file +
+          " has upstream's " +
+          JSON.stringify(needle) +
+          " back",
+      );
     }
   }
 }

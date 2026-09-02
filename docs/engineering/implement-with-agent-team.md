@@ -8,12 +8,12 @@ It stores nothing of its own. The graph is the tickets' native blocked-by links,
 
 You invoke this by typing `/implement-with-agent-team`, and the agent won't reach for it on its own.
 
-| Your situation | Reach for |
-|---|---|
-| Several tickets, with blocking edges between them | this skill |
-| One ticket, nothing depending on it | [implement](https://aihero.dev/skills-implement) |
-| Tickets that don't exist yet | [to-tickets](https://aihero.dev/skills-to-tickets) first |
-| A shape too foggy to slice into tickets at all | [wayfinder](https://aihero.dev/skills-wayfinder) first |
+| Your situation                                    | Reach for                                                |
+| ------------------------------------------------- | -------------------------------------------------------- |
+| Several tickets, with blocking edges between them | this skill                                               |
+| One ticket, nothing depending on it               | [implement](https://aihero.dev/skills-implement)         |
+| Tickets that don't exist yet                      | [to-tickets](https://aihero.dev/skills-to-tickets) first |
+| A shape too foggy to slice into tickets at all    | [wayfinder](https://aihero.dev/skills-wayfinder) first   |
 
 ## Prerequisites
 

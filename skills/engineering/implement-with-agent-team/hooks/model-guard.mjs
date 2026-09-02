@@ -38,16 +38,20 @@ if (model) allow();
 // `fork` ignores the model parameter outright, so it can never be made cheap.
 const forked = input.subagent_type === "fork";
 const reason = forked
-  ? name + " is a fork, which always inherits the lead's model and ignores `model`. " +
+  ? name +
+    " is a fork, which always inherits the lead's model and ignores `model`. " +
     "Spawn it as an ordinary teammate with the model the frontier printed for this ticket."
-  : name + " has no explicit model, so it would inherit the lead's. Pass the model the " +
+  : name +
+    " has no explicit model, so it would inherit the lead's. Pass the model the " +
     "frontier printed for this ticket, which is `sonnet` unless it was planned for `opus`.";
 
-console.log(JSON.stringify({
-  hookSpecificOutput: {
-    hookEventName: "PreToolUse",
-    permissionDecision: "deny",
-    permissionDecisionReason: reason,
-  },
-}));
+console.log(
+  JSON.stringify({
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: reason,
+    },
+  }),
+);
 process.exit(0);
