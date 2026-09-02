@@ -41,14 +41,14 @@ Run it until `frontier` exits `0`.
 4. **Take each return**: verify, record, merge.
 5. Back to 1.
 
-| Status | Your move |
-|---|---|
-| `READY` | Claim and dispatch it |
-| `BUILDING` | Wait |
-| `REVIEW` | Verify and merge it |
-| `BLOCKED` | Leave it; it frees itself |
-| `STUCK` | Report it and carry on |
-| `DONE` | Leave it |
+| Status     | Your move                 |
+| ---------- | ------------------------- |
+| `READY`    | Claim and dispatch it     |
+| `BUILDING` | Wait                      |
+| `REVIEW`   | Verify and merge it       |
+| `BLOCKED`  | Leave it; it frees itself |
+| `STUCK`    | Report it and carry on    |
+| `DONE`     | Leave it                  |
 
 ## Dispatch
 

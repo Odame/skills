@@ -52,8 +52,13 @@ function usageError(message) {
 }
 
 function parseReference(reference, what) {
-  const match = /^([^/\s]+\/[^#\s]+)#(\d+)$/.exec(String(reference ?? "").trim());
-  if (!match) usageError(what + " must look like owner/repo#123, got " + JSON.stringify(reference));
+  const match = /^([^/\s]+\/[^#\s]+)#(\d+)$/.exec(
+    String(reference ?? "").trim(),
+  );
+  if (!match)
+    usageError(
+      what + " must look like owner/repo#123, got " + JSON.stringify(reference),
+    );
   return { repo: match[1], number: Number(match[2]) };
 }
 
@@ -61,12 +66,18 @@ const asKey = (ticket) => ticket.repo + "#" + ticket.number;
 
 async function gh(args, { tolerate = false } = {}) {
   try {
-    const { stdout } = await execFileAsync("gh", args, { maxBuffer: 64 * 1024 * 1024 });
+    const { stdout } = await execFileAsync("gh", args, {
+      maxBuffer: 64 * 1024 * 1024,
+    });
     return stdout;
   } catch (error) {
     if (tolerate) return null;
-    const detail = String(error.stderr || error.message).trim().split("\n")[0];
-    console.error("tickets: `gh " + args.slice(0, 2).join(" ") + "` failed: " + detail);
+    const detail = String(error.stderr || error.message)
+      .trim()
+      .split("\n")[0];
+    console.error(
+      "tickets: `gh " + args.slice(0, 2).join(" ") + "` failed: " + detail,
+    );
     process.exit(1);
   }
 }
@@ -89,45 +100,83 @@ async function defaultBranch(repo) {
 }
 
 function slugOf(title) {
-  return String(title).toLowerCase().replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "").slice(0, 40).replace(/-+$/, "");
+  return String(title)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/, "");
 }
-const branchFor = (ticket) => "tkt-" + ticket.number + "-" + slugOf(ticket.title);
+const branchFor = (ticket) =>
+  "tkt-" + ticket.number + "-" + slugOf(ticket.title);
 
 // ---------------------------------------------------------------- ticket set
 
 async function ticketSet(options) {
   let tickets;
   if (options.tickets) {
-    const references = options.tickets.split(",").map((one) => parseReference(one, "--tickets entry"));
-    const issues = await Promise.all(references.map((one) => api("repos/" + one.repo + "/issues/" + one.number)));
+    const references = options.tickets
+      .split(",")
+      .map((one) => parseReference(one, "--tickets entry"));
+    const issues = await Promise.all(
+      references.map((one) =>
+        api("repos/" + one.repo + "/issues/" + one.number),
+      ),
+    );
     tickets = issues.map((issue, index) => ({
-      repo: references[index].repo, number: references[index].number,
-      title: issue.title, state: issue.state,
+      repo: references[index].repo,
+      number: references[index].number,
+      title: issue.title,
+      state: issue.state,
     }));
   } else {
     const epic = parseReference(options.epic, "--epic");
-    const children = await api("repos/" + epic.repo + "/issues/" + epic.number + "/sub_issues", { paginate: true });
+    const children = await api(
+      "repos/" + epic.repo + "/issues/" + epic.number + "/sub_issues",
+      { paginate: true },
+    );
     if (!children.length) {
-      console.error("tickets: " + options.epic + " has no sub-issues. Either it is not an epic, or it never " +
-        "finished /to-tickets. Break it into linked tickets before dispatching.");
+      console.error(
+        "tickets: " +
+          options.epic +
+          " has no sub-issues. Either it is not an epic, or it never " +
+          "finished /to-tickets. Break it into linked tickets before dispatching.",
+      );
       process.exit(1);
     }
     tickets = children.map((child) => ({
       repo: child.repository ? child.repository.full_name : epic.repo,
-      number: child.number, title: child.title, state: child.state,
+      number: child.number,
+      title: child.title,
+      state: child.state,
     }));
   }
-  if (options.repo) tickets = tickets.filter((ticket) => ticket.repo === options.repo);
-  if (!tickets.length) usageError("no tickets left after --repo " + options.repo);
-  return tickets.sort((a, b) => asKey(a).localeCompare(asKey(b), "en", { numeric: true }));
+  if (options.repo)
+    tickets = tickets.filter((ticket) => ticket.repo === options.repo);
+  if (!tickets.length)
+    usageError("no tickets left after --repo " + options.repo);
+  return tickets.sort((a, b) =>
+    asKey(a).localeCompare(asKey(b), "en", { numeric: true }),
+  );
 }
 
 /** The marker comments, latest one wins, plus when the claim was made. */
 async function claimRecord(ticket) {
   const comments = await api(
-    "repos/" + ticket.repo + "/issues/" + ticket.number + "/comments?per_page=100", { paginate: true });
-  const record = { status: null, branch: null, base: null, since: null, pr: null };
+    "repos/" +
+      ticket.repo +
+      "/issues/" +
+      ticket.number +
+      "/comments?per_page=100",
+    { paginate: true },
+  );
+  const record = {
+    status: null,
+    branch: null,
+    base: null,
+    since: null,
+    pr: null,
+  };
   for (const comment of comments) {
     const body = String(comment.body || "");
     for (const marker of MARKERS) {
@@ -146,30 +195,55 @@ async function claimRecord(ticket) {
 }
 
 async function resolveStatuses(tickets) {
-  await Promise.all(tickets.map(async (ticket) => {
-    ticket.branch = branchFor(ticket);
-    if (ticket.state === "closed") { ticket.status = "DONE"; return; }
-    const blockers = await api("repos/" + ticket.repo + "/issues/" + ticket.number + "/dependencies/blocked_by");
-    ticket.blockers = blockers.map((blocker) => ({
-      key: (blocker.repository ? blocker.repository.full_name : ticket.repo) + "#" + blocker.number,
-      open: blocker.state !== "closed",
-    }));
-    ticket.openBlockers = ticket.blockers.filter((blocker) => blocker.open).map((blocker) => blocker.key);
-    const record = await claimRecord(ticket);
-    ticket.claim = record;
-    if (record.branch) ticket.branch = record.branch;
-    ticket.base = record.base;
-    ticket.pr = record.pr;
-    // STUCK outranks BLOCKED: a blocked ticket is expected to free itself, and
-    // showing that for one that will not is the more expensive wrong answer.
-    if (record.status === "STUCK") { ticket.status = "STUCK"; return; }
-    if (ticket.openBlockers.length) { ticket.status = "BLOCKED"; return; }
-    ticket.status = record.status || "READY";
-    if (ticket.status === "BUILDING" && record.since) {
-      ticket.claimedMinutes = Math.floor((Date.now() - Date.parse(record.since)) / 60000);
-      if (ticket.claimedMinutes >= STALE_CLAIM_MINUTES && !record.pr) ticket.stale = true;
-    }
-  }));
+  await Promise.all(
+    tickets.map(async (ticket) => {
+      ticket.branch = branchFor(ticket);
+      if (ticket.state === "closed") {
+        ticket.status = "DONE";
+        return;
+      }
+      const blockers = await api(
+        "repos/" +
+          ticket.repo +
+          "/issues/" +
+          ticket.number +
+          "/dependencies/blocked_by",
+      );
+      ticket.blockers = blockers.map((blocker) => ({
+        key:
+          (blocker.repository ? blocker.repository.full_name : ticket.repo) +
+          "#" +
+          blocker.number,
+        open: blocker.state !== "closed",
+      }));
+      ticket.openBlockers = ticket.blockers
+        .filter((blocker) => blocker.open)
+        .map((blocker) => blocker.key);
+      const record = await claimRecord(ticket);
+      ticket.claim = record;
+      if (record.branch) ticket.branch = record.branch;
+      ticket.base = record.base;
+      ticket.pr = record.pr;
+      // STUCK outranks BLOCKED: a blocked ticket is expected to free itself, and
+      // showing that for one that will not is the more expensive wrong answer.
+      if (record.status === "STUCK") {
+        ticket.status = "STUCK";
+        return;
+      }
+      if (ticket.openBlockers.length) {
+        ticket.status = "BLOCKED";
+        return;
+      }
+      ticket.status = record.status || "READY";
+      if (ticket.status === "BUILDING" && record.since) {
+        ticket.claimedMinutes = Math.floor(
+          (Date.now() - Date.parse(record.since)) / 60000,
+        );
+        if (ticket.claimedMinutes >= STALE_CLAIM_MINUTES && !record.pr)
+          ticket.stale = true;
+      }
+    }),
+  );
   return tickets;
 }
 
@@ -177,21 +251,31 @@ function printTable(tickets) {
   const width = Math.max(...tickets.map((ticket) => asKey(ticket).length));
   for (const ticket of tickets) {
     let note = "";
-    if (ticket.status === "BLOCKED") note = "  blocked by " + ticket.openBlockers.join(", ");
-    else if (ticket.stale) note = "  claimed " + ticket.claimedMinutes + " min ago, still no PR";
+    if (ticket.status === "BLOCKED")
+      note = "  blocked by " + ticket.openBlockers.join(", ");
+    else if (ticket.stale)
+      note = "  claimed " + ticket.claimedMinutes + " min ago, still no PR";
     else if (ticket.status === "READY") note = "  branch " + ticket.branch;
-    if (ticket.base && ticket.base !== defaultBranches.get(ticket.repo)) note += "  onto " + ticket.base;
+    if (ticket.base && ticket.base !== defaultBranches.get(ticket.repo))
+      note += "  onto " + ticket.base;
     else if (ticket.pr) note = "  PR #" + ticket.pr;
-    console.log(ticket.status.padEnd(9) + asKey(ticket).padEnd(width + 2) + ticket.title + note);
+    console.log(
+      ticket.status.padEnd(9) +
+        asKey(ticket).padEnd(width + 2) +
+        ticket.title +
+        note,
+    );
   }
   console.log();
 }
 
-const countOf = (tickets, status) => tickets.filter((ticket) => ticket.status === status).length;
+const countOf = (tickets, status) =>
+  tickets.filter((ticket) => ticket.status === status).length;
 
 function summarise(tickets) {
   return ["READY", "BUILDING", "REVIEW", "BLOCKED", "STUCK", "DONE"]
-    .map((status) => status.toLowerCase() + " " + countOf(tickets, status)).join(", ");
+    .map((status) => status.toLowerCase() + " " + countOf(tickets, status))
+    .join(", ");
 }
 
 // ------------------------------------------------------------------ commands
@@ -200,37 +284,67 @@ async function commandFrontier(options) {
   const tickets = await resolveStatuses(await ticketSet(options));
   // The default branch is what "not an integration branch" is measured against,
   // so it has to be known before anything is compared to it.
-  await Promise.all([...new Set(tickets.map((ticket) => ticket.repo))].map(defaultBranch));
-  if (options.json) { console.log(JSON.stringify(tickets, null, 2)); }
-  else printTable(tickets);
+  await Promise.all(
+    [...new Set(tickets.map((ticket) => ticket.repo))].map(defaultBranch),
+  );
+  if (options.json) {
+    console.log(JSON.stringify(tickets, null, 2));
+  } else printTable(tickets);
 
-  const bases = [...new Set(tickets.filter((ticket) => ticket.base).map((ticket) => ticket.base))].sort();
-  const integration = bases.filter((base) => base !== defaultBranches.get(tickets[0].repo));
+  const bases = [
+    ...new Set(
+      tickets.filter((ticket) => ticket.base).map((ticket) => ticket.base),
+    ),
+  ].sort();
+  const integration = bases.filter(
+    (base) => base !== defaultBranches.get(tickets[0].repo),
+  );
   if (bases.length > 1) {
-    console.log("MIXED BASES: claimed tickets target " + bases.join(" and ") +
-      ". One run lands in one place, so retarget the odd PRs before merging anything.");
+    console.log(
+      "MIXED BASES: claimed tickets target " +
+        bases.join(" and ") +
+        ". One run lands in one place, so retarget the odd PRs before merging anything.",
+    );
   }
 
   const outstanding = tickets.filter((ticket) => ticket.status !== "DONE");
   if (!outstanding.length) {
     console.log("EPIC COMPLETE: " + tickets.length + " tickets, all closed.");
     if (integration.length === 1) {
-      console.log("The work is on `" + integration[0] + "`, not the default branch. " +
-        "Open one PR from it to land the run.");
+      console.log(
+        "The work is on `" +
+          integration[0] +
+          "`, not the default branch. " +
+          "Open one PR from it to land the run.",
+      );
     }
     return bases.length > 1 ? 2 : 0;
   }
   console.log("WORK REMAINS: " + summarise(tickets) + ".");
   const stale = tickets.filter((ticket) => ticket.stale);
   if (stale.length) {
-    console.log("Re-dispatch: " + stale.map(asKey).join(", ") +
-      ": claimed but no PR, so the teammate is gone. Claim again with --redispatch.");
+    console.log(
+      "Re-dispatch: " +
+        stale.map(asKey).join(", ") +
+        ": claimed but no PR, so the teammate is gone. Claim again with --redispatch.",
+    );
   }
-  if (countOf(tickets, "READY")) console.log("Dispatch every READY ticket now, in one message.");
-  else if (countOf(tickets, "REVIEW")) console.log("Verify and merge the returned tickets, then run this again.");
-  else if (countOf(tickets, "BUILDING")) console.log("Nothing takeable; teammates are out. Wait, then run this again.");
-  else if (countOf(tickets, "STUCK")) console.log("Nothing takeable. What remains is stuck and needs a decision.");
-  else console.log("Nothing takeable and nothing in flight: the remaining blockers sit outside this ticket set.");
+  if (countOf(tickets, "READY"))
+    console.log("Dispatch every READY ticket now, in one message.");
+  else if (countOf(tickets, "REVIEW"))
+    console.log("Verify and merge the returned tickets, then run this again.");
+  else if (countOf(tickets, "BUILDING"))
+    console.log(
+      "Nothing takeable; teammates are out. Wait, then run this again.",
+    );
+  else if (countOf(tickets, "STUCK"))
+    console.log(
+      "Nothing takeable. What remains is stuck and needs a decision.",
+    );
+  else
+    console.log(
+      "Nothing takeable and nothing in flight: the remaining blockers sit outside this ticket set.",
+    );
   return 2;
 }
 
@@ -240,23 +354,36 @@ async function commandPreflight(options) {
 
   const auth = await gh(["auth", "status"], { tolerate: true });
   console.log(auth === null ? "auth       NOT AUTHENTICATED" : "auth       ok");
-  if (auth === null) problems.push("`gh` is not authenticated. Run `gh auth login`.");
+  if (auth === null)
+    problems.push("`gh` is not authenticated. Run `gh auth login`.");
 
   const tickets = await resolveStatuses(await ticketSet(options));
   console.log("tickets    " + tickets.length + " in the set");
 
-  for (const repo of [...new Set(tickets.map((ticket) => ticket.repo))].sort()) {
+  for (const repo of [
+    ...new Set(tickets.map((ticket) => ticket.repo)),
+  ].sort()) {
     const branch = options.base || (await defaultBranch(repo));
     const missing = options.base && !(await branchExists(repo, options.base));
-    console.log("base       " + repo + " -> " + branch + (missing ? "   MISSING" : ""));
+    console.log(
+      "base       " + repo + " -> " + branch + (missing ? "   MISSING" : ""),
+    );
     if (missing) {
-      problems.push("`" + options.base + "` does not exist in " + repo + ". Every repository in the run " +
-        "needs the branch before a ticket can be claimed against it.");
+      problems.push(
+        "`" +
+          options.base +
+          "` does not exist in " +
+          repo +
+          ". Every repository in the run " +
+          "needs the branch before a ticket can be claimed against it.",
+      );
     }
   }
   if (options.base) {
-    note("on an integration branch a merge does not close its ticket, so each one is closed by hand; " +
-      "check-merged holds the run until that happens");
+    note(
+      "on an integration branch a merge does not close its ticket, so each one is closed by hand; " +
+        "check-merged holds the run until that happens",
+    );
   }
 
   // GitHub refuses any blocked-by edge that would close a cycle, including
@@ -268,33 +395,63 @@ async function commandPreflight(options) {
     if (seen.has(key)) return 0;
     seen.add(key);
     const ticket = tickets.find((one) => asKey(one) === key);
-    const parents = (ticket?.blockers || []).map((blocker) => blocker.key)
+    const parents = (ticket?.blockers || [])
+      .map((blocker) => blocker.key)
       .filter((parent) => tickets.some((one) => asKey(one) === parent));
-    const value = parents.length ? 1 + Math.max(...parents.map((parent) => depthOf(parent, seen))) : 0;
+    const value = parents.length
+      ? 1 + Math.max(...parents.map((parent) => depthOf(parent, seen)))
+      : 0;
     level.set(key, value);
     return value;
   };
   for (const ticket of tickets) depthOf(asKey(ticket));
-  const widths = [...level.values()].reduce((counts, value) =>
-    counts.set(value, (counts.get(value) || 0) + 1), new Map());
+  const widths = [...level.values()].reduce(
+    (counts, value) => counts.set(value, (counts.get(value) || 0) + 1),
+    new Map(),
+  );
   const widest = Math.max(...widths.values());
-  console.log("shape      " + (Math.max(...level.values()) + 1) + " waves deep, " +
-    widest + " ticket(s) can run at once at the widest point");
+  console.log(
+    "shape      " +
+      (Math.max(...level.values()) + 1) +
+      " waves deep, " +
+      widest +
+      " ticket(s) can run at once at the widest point",
+  );
   if (widest === 1 && tickets.length > 2) {
-    note("one long chain: teammates would only queue behind each other's merges");
+    note(
+      "one long chain: teammates would only queue behind each other's merges",
+    );
   }
 
-  const unlinked = tickets.filter((ticket) => ticket.status !== "DONE" && !(ticket.blockers || []).length);
-  console.log("links      " + (tickets.length - unlinked.length) + " of " + tickets.length + " carry blocked-by links");
+  const unlinked = tickets.filter(
+    (ticket) => ticket.status !== "DONE" && !(ticket.blockers || []).length,
+  );
+  console.log(
+    "links      " +
+      (tickets.length - unlinked.length) +
+      " of " +
+      tickets.length +
+      " carry blocked-by links",
+  );
   if (unlinked.length === tickets.length && tickets.length > 1) {
-    problems.push("No ticket declares a blocker. Either they are genuinely independent, or the set never " +
-      "finished /to-tickets. Confirm before dispatching them all at once.");
+    problems.push(
+      "No ticket declares a blocker. Either they are genuinely independent, or the set never " +
+        "finished /to-tickets. Confirm before dispatching them all at once.",
+    );
   }
 
-  const claimed = tickets.filter((ticket) => ["BUILDING", "REVIEW"].includes(ticket.status));
-  console.log("in flight  " + claimed.length + (claimed.length ? " (" + claimed.map(asKey).join(", ") + ")" : ""));
+  const claimed = tickets.filter((ticket) =>
+    ["BUILDING", "REVIEW"].includes(ticket.status),
+  );
+  console.log(
+    "in flight  " +
+      claimed.length +
+      (claimed.length ? " (" + claimed.map(asKey).join(", ") + ")" : ""),
+  );
   if (claimed.length) {
-    note("a previous run left these claimed; frontier says whether to resume or re-dispatch each");
+    note(
+      "a previous run left these claimed; frontier says whether to resume or re-dispatch each",
+    );
   }
 
   console.log();
@@ -309,13 +466,18 @@ async function commandPreflight(options) {
 
 async function onlyTicket(options) {
   const reference = parseReference(options.ticket, "--ticket");
-  const issue = await api("repos/" + reference.repo + "/issues/" + reference.number);
+  const issue = await api(
+    "repos/" + reference.repo + "/issues/" + reference.number,
+  );
   return { ...reference, title: issue.title, state: issue.state, id: issue.id };
 }
 
 async function branchExists(repo, branch) {
-  return (await api("repos/" + repo + "/branches/" + encodeURIComponent(branch),
-    { tolerate: true })) !== null;
+  return (
+    (await api("repos/" + repo + "/branches/" + encodeURIComponent(branch), {
+      tolerate: true,
+    })) !== null
+  );
 }
 
 /** The base a ticket is built on: what it was claimed against, else the repo default. */
@@ -324,33 +486,68 @@ async function baseFor(ticket, record) {
 }
 
 async function postComment(ticket, body) {
-  await gh(["api", "--method", "POST",
-    "repos/" + ticket.repo + "/issues/" + ticket.number + "/comments", "-f", "body=" + body]);
+  await gh([
+    "api",
+    "--method",
+    "POST",
+    "repos/" + ticket.repo + "/issues/" + ticket.number + "/comments",
+    "-f",
+    "body=" + body,
+  ]);
 }
 
 async function commandClaim(options) {
-  if (!options.model) usageError("claim needs --model, so the teammate does not inherit the lead's");
+  if (!options.model)
+    usageError(
+      "claim needs --model, so the teammate does not inherit the lead's",
+    );
   const ticket = await onlyTicket(options);
   const record = await claimRecord(ticket);
   if (record.status === "BUILDING" && !options.redispatch) {
-    console.log("ALREADY CLAIMED: " + asKey(ticket) + " is being built on `" + record.branch + "`.");
+    console.log(
+      "ALREADY CLAIMED: " +
+        asKey(ticket) +
+        " is being built on `" +
+        record.branch +
+        "`.",
+    );
     console.log("Pass --redispatch only when that teammate is gone.");
     return 2;
   }
   const branch = record.branch || branchFor(ticket);
-  const base = options.base || record.base || (await defaultBranch(ticket.repo));
+  const base =
+    options.base || record.base || (await defaultBranch(ticket.repo));
   if (!(await branchExists(ticket.repo, base))) {
-    console.log("NO SUCH BASE: `" + base + "` does not exist in " + ticket.repo + ".");
-    console.log("Create it and push it before claiming, or drop --base to build on the default branch.");
+    console.log(
+      "NO SUCH BASE: `" + base + "` does not exist in " + ticket.repo + ".",
+    );
+    console.log(
+      "Create it and push it before claiming, or drop --base to build on the default branch.",
+    );
     return 2;
   }
-  await postComment(ticket,
-    MARKERS[0].lead + "\n\nBranch `" + branch + "`, off `" + base + "`. Model " + options.model + ".");
+  await postComment(
+    ticket,
+    MARKERS[0].lead +
+      "\n\nBranch `" +
+      branch +
+      "`, off `" +
+      base +
+      "`. Model " +
+      options.model +
+      ".",
+  );
   console.log("branch " + branch);
   console.log("base   " + base);
   if (base !== (await defaultBranch(ticket.repo))) {
-    console.log("note   merging into `" + base + "` will not close #" + ticket.number + " on its own, " +
-      "so close it after the merge; check-merged holds the run until you do.");
+    console.log(
+      "note   merging into `" +
+        base +
+        "` will not close #" +
+        ticket.number +
+        " on its own, " +
+        "so close it after the merge; check-merged holds the run until you do.",
+    );
   }
   console.log("CLAIMED " + asKey(ticket));
   return 0;
@@ -359,28 +556,59 @@ async function commandClaim(options) {
 async function commandReturn(options) {
   if (!options.pr) usageError("return needs --pr <number>");
   const ticket = await onlyTicket(options);
-  await postComment(ticket, MARKERS[1].lead + "\n\nPR #" + options.pr +
-    (options.note ? "\n\n" + options.note : ""));
+  await postComment(
+    ticket,
+    MARKERS[1].lead +
+      "\n\nPR #" +
+      options.pr +
+      (options.note ? "\n\n" + options.note : ""),
+  );
   console.log("RECORDED " + asKey(ticket) + " returned with PR #" + options.pr);
   return 0;
 }
 
 async function commandHandBack(options) {
-  if (!options.reason) usageError("hand-back needs --reason: what was tried, and what would unblock it");
+  if (!options.reason)
+    usageError(
+      "hand-back needs --reason: what was tried, and what would unblock it",
+    );
   const ticket = await onlyTicket(options);
   if (options.blockedOn) {
     const blocker = parseReference(options.blockedOn, "--blocked-on");
-    const blockerIssue = await api("repos/" + blocker.repo + "/issues/" + blocker.number);
-    await gh(["api", "--method", "POST",
-      "repos/" + ticket.repo + "/issues/" + ticket.number + "/dependencies/blocked_by",
-      "-F", "issue_id=" + blockerIssue.id]);
-    await postComment(ticket, MARKERS[3].lead + "\n\nBlocked on " + asKey(blocker) +
-      ", now recorded as a dependency.\n\n" + options.reason);
-    console.log("EDGE RECORDED: " + asKey(ticket) + " now blocked by " + asKey(blocker) +
-      ", and released. It becomes takeable again when that blocker closes.");
+    const blockerIssue = await api(
+      "repos/" + blocker.repo + "/issues/" + blocker.number,
+    );
+    await gh([
+      "api",
+      "--method",
+      "POST",
+      "repos/" +
+        ticket.repo +
+        "/issues/" +
+        ticket.number +
+        "/dependencies/blocked_by",
+      "-F",
+      "issue_id=" + blockerIssue.id,
+    ]);
+    await postComment(
+      ticket,
+      MARKERS[3].lead +
+        "\n\nBlocked on " +
+        asKey(blocker) +
+        ", now recorded as a dependency.\n\n" +
+        options.reason,
+    );
+    console.log(
+      "EDGE RECORDED: " +
+        asKey(ticket) +
+        " now blocked by " +
+        asKey(blocker) +
+        ", and released. It becomes takeable again when that blocker closes.",
+    );
     return 0;
   }
-  if (!options.stuck) usageError("hand-back needs either --blocked-on <id> or --stuck");
+  if (!options.stuck)
+    usageError("hand-back needs either --blocked-on <id> or --stuck");
   await postComment(ticket, MARKERS[2].lead + "\n\n" + options.reason);
   console.log("STUCK " + asKey(ticket) + ". The run continues without it.");
   return 0;
@@ -389,8 +617,22 @@ async function commandHandBack(options) {
 async function pullRequestFor(ticket) {
   const record = await claimRecord(ticket);
   const branch = record.branch || branchFor(ticket);
-  const found = JSON.parse(await gh(["pr", "list", "--repo", ticket.repo, "--head", branch,
-    "--state", "all", "--json", "number,state,baseRefName,mergeable,isDraft,url", "--limit", "5"]));
+  const found = JSON.parse(
+    await gh([
+      "pr",
+      "list",
+      "--repo",
+      ticket.repo,
+      "--head",
+      branch,
+      "--state",
+      "all",
+      "--json",
+      "number,state,baseRefName,mergeable,isDraft,url",
+      "--limit",
+      "5",
+    ]),
+  );
   return { branch, pull: found[0] || null };
 }
 
@@ -399,22 +641,44 @@ async function commandCheckPr(options) {
   const { branch, pull } = await pullRequestFor(ticket);
   const problems = [];
   if (!pull) {
-    console.log("CHECK FAILED: no pull request from branch `" + branch + "` in " + ticket.repo + ".");
-    console.log("The teammate reported work it did not push. Re-dispatch the ticket.");
+    console.log(
+      "CHECK FAILED: no pull request from branch `" +
+        branch +
+        "` in " +
+        ticket.repo +
+        ".",
+    );
+    console.log(
+      "The teammate reported work it did not push. Re-dispatch the ticket.",
+    );
     return 2;
   }
-  console.log("pr         #" + pull.number + " " + pull.state + "  " + pull.url);
+  console.log(
+    "pr         #" + pull.number + " " + pull.state + "  " + pull.url,
+  );
 
   // GitHub's own parse of the closing keyword, not a regex over the body.
-  const linked = JSON.parse(await gh(["api", "graphql", "-f", "query=" +
-    "query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){" +
-    "commits{totalCount} closingIssuesReferences(first:20){nodes{number}} " +
-    "statusCheckRollup:commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}",
-    "-F", "owner=" + ticket.repo.split("/")[0], "-F", "repo=" + ticket.repo.split("/")[1],
-    "-F", "pr=" + pull.number]));
+  const linked = JSON.parse(
+    await gh([
+      "api",
+      "graphql",
+      "-f",
+      "query=" +
+        "query($owner:String!,$repo:String!,$pr:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$pr){" +
+        "commits{totalCount} closingIssuesReferences(first:20){nodes{number}} " +
+        "statusCheckRollup:commits(last:1){nodes{commit{statusCheckRollup{state}}}}}}}",
+      "-F",
+      "owner=" + ticket.repo.split("/")[0],
+      "-F",
+      "repo=" + ticket.repo.split("/")[1],
+      "-F",
+      "pr=" + pull.number,
+    ]),
+  );
   const node = linked.data.repository.pullRequest;
   const closes = node.closingIssuesReferences.nodes.map((one) => one.number);
-  const rollup = node.statusCheckRollup.nodes[0]?.commit?.statusCheckRollup?.state || "NONE";
+  const rollup =
+    node.statusCheckRollup.nodes[0]?.commit?.statusCheckRollup?.state || "NONE";
 
   const base = await baseFor(ticket, await claimRecord(ticket));
   const onDefault = base === (await defaultBranch(ticket.repo));
@@ -423,36 +687,82 @@ async function commandCheckPr(options) {
   // branch, so off one there is nothing to read and its absence proves nothing.
   // The branch ties the pull request to its ticket either way.
   if (onDefault) {
-    console.log("closes     " + (closes.length ? closes.map((one) => "#" + one).join(", ") : "nothing"));
+    console.log(
+      "closes     " +
+        (closes.length ? closes.map((one) => "#" + one).join(", ") : "nothing"),
+    );
     if (!closes.includes(ticket.number)) {
-      problems.push("PR #" + pull.number + " does not close #" + ticket.number + ". Merging it would leave " +
-        "the ticket open and the run would never advance past it. Add `Closes #" + ticket.number +
-        "` to the PR body.");
+      problems.push(
+        "PR #" +
+          pull.number +
+          " does not close #" +
+          ticket.number +
+          ". Merging it would leave " +
+          "the ticket open and the run would never advance past it. Add `Closes #" +
+          ticket.number +
+          "` to the PR body.",
+      );
     }
   } else {
-    console.log("closes     not recorded off the default branch; close #" + ticket.number + " after merging");
+    console.log(
+      "closes     not recorded off the default branch; close #" +
+        ticket.number +
+        " after merging",
+    );
   }
 
-  console.log("base       " + pull.baseRefName + (pull.baseRefName === base ? "" : "  (claimed on " + base + ")"));
+  console.log(
+    "base       " +
+      pull.baseRefName +
+      (pull.baseRefName === base ? "" : "  (claimed on " + base + ")"),
+  );
   if (pull.baseRefName !== base) {
-    problems.push("PR #" + pull.number + " targets `" + pull.baseRefName + "`, not `" + base + "`. Retarget it.");
+    problems.push(
+      "PR #" +
+        pull.number +
+        " targets `" +
+        pull.baseRefName +
+        "`, not `" +
+        base +
+        "`. Retarget it.",
+    );
   }
 
   console.log("commits    " + node.commits.totalCount);
-  if (!node.commits.totalCount) problems.push("PR #" + pull.number + " has no commits. Nothing was built.");
+  if (!node.commits.totalCount)
+    problems.push("PR #" + pull.number + " has no commits. Nothing was built.");
 
   console.log("checks     " + rollup);
   if (rollup === "FAILURE" || rollup === "ERROR") {
-    problems.push("Checks are red on PR #" + pull.number + ". Send it back to a teammate before merging.");
+    problems.push(
+      "Checks are red on PR #" +
+        pull.number +
+        ". Send it back to a teammate before merging.",
+    );
   } else if (rollup === "PENDING") {
-    problems.push("Checks are still running on PR #" + pull.number + ". Wait, then run this again.");
+    problems.push(
+      "Checks are still running on PR #" +
+        pull.number +
+        ". Wait, then run this again.",
+    );
   }
 
-  console.log("mergeable  " + pull.mergeable + (pull.isDraft ? "  (draft)" : ""));
+  console.log(
+    "mergeable  " + pull.mergeable + (pull.isDraft ? "  (draft)" : ""),
+  );
   if (pull.mergeable === "CONFLICTING") {
-    problems.push("PR #" + pull.number + " conflicts with `" + base + "`. Send it back to a teammate to rebase.");
+    problems.push(
+      "PR #" +
+        pull.number +
+        " conflicts with `" +
+        base +
+        "`. Send it back to a teammate to rebase.",
+    );
   }
-  if (pull.isDraft) problems.push("PR #" + pull.number + " is still a draft. Mark it ready before merging.");
+  if (pull.isDraft)
+    problems.push(
+      "PR #" + pull.number + " is still a draft. Mark it ready before merging.",
+    );
 
   console.log();
   if (problems.length) {
@@ -460,9 +770,18 @@ async function commandCheckPr(options) {
     console.log("CHECK FAILED (" + problems.length + ")");
     return 2;
   }
-  console.log("PR OK: #" + pull.number + " is green and mergeable, and " + (onDefault
-    ? "closes #" + ticket.number + " on merge."
-    : "targets `" + base + "`, so close #" + ticket.number + " yourself after merging."));
+  console.log(
+    "PR OK: #" +
+      pull.number +
+      " is green and mergeable, and " +
+      (onDefault
+        ? "closes #" + ticket.number + " on merge."
+        : "targets `" +
+          base +
+          "`, so close #" +
+          ticket.number +
+          " yourself after merging."),
+  );
   return 0;
 }
 
@@ -470,24 +789,50 @@ async function commandCheckMerged(options) {
   const ticket = await onlyTicket(options);
   const { pull } = await pullRequestFor(ticket);
   const issue = await api("repos/" + ticket.repo + "/issues/" + ticket.number);
-  console.log("pr         " + (pull ? "#" + pull.number + " " + pull.state : "none found"));
-  console.log("ticket     " + issue.state + (issue.state_reason ? " (" + issue.state_reason + ")" : ""));
+  console.log(
+    "pr         " +
+      (pull ? "#" + pull.number + " " + pull.state : "none found"),
+  );
+  console.log(
+    "ticket     " +
+      issue.state +
+      (issue.state_reason ? " (" + issue.state_reason + ")" : ""),
+  );
   console.log();
   if (pull && pull.state === "MERGED" && issue.state === "closed") {
-    console.log("MERGED: #" + ticket.number + " is closed, and whatever it blocked is now takeable.");
+    console.log(
+      "MERGED: #" +
+        ticket.number +
+        " is closed, and whatever it blocked is now takeable.",
+    );
     return 0;
   }
   if (pull && pull.state === "MERGED" && issue.state === "open") {
     const base = await baseFor(ticket, await claimRecord(ticket));
     const onDefault = base === (await defaultBranch(ticket.repo));
-    console.log("- PR #" + pull.number + " merged but #" + ticket.number + " is still open, so nothing it " +
-      "blocks can start. Close it now: gh issue close " + ticket.number + " --repo " + ticket.repo +
-      (onDefault
-        ? "\n- Then add a closing keyword to the next PR, so the merge does this itself."
-        : "\n- Expected on `" + base + "`: a closing keyword only fires when the PR merges into the " +
-          "default branch, so every ticket on an integration branch is closed by hand."));
+    console.log(
+      "- PR #" +
+        pull.number +
+        " merged but #" +
+        ticket.number +
+        " is still open, so nothing it " +
+        "blocks can start. Close it now: gh issue close " +
+        ticket.number +
+        " --repo " +
+        ticket.repo +
+        (onDefault
+          ? "\n- Then add a closing keyword to the next PR, so the merge does this itself."
+          : "\n- Expected on `" +
+            base +
+            "`: a closing keyword only fires when the PR merges into the " +
+            "default branch, so every ticket on an integration branch is closed by hand."),
+    );
   } else if (!pull || pull.state !== "MERGED") {
-    console.log("- Nothing merged for #" + ticket.number + " yet. Run check-pr, then merge.");
+    console.log(
+      "- Nothing merged for #" +
+        ticket.number +
+        " yet. Run check-pr, then merge.",
+    );
   }
   console.log("NOT MERGED (" + asKey(ticket) + ")");
   return 2;
@@ -501,7 +846,11 @@ async function commandWatch(options) {
   let previous = null;
 
   const repoChanged = async (repo) => {
-    const args = ["api", "repos/" + repo + "/issues?state=all&per_page=1", "--include"];
+    const args = [
+      "api",
+      "repos/" + repo + "/issues?state=all&per_page=1",
+      "--include",
+    ];
     if (etags.has(repo)) args.push("-H", "If-None-Match: " + etags.get(repo));
     const stdout = await gh(args, { tolerate: true });
     if (stdout === null) return true;
@@ -515,8 +864,9 @@ async function commandWatch(options) {
     const tickets = await ticketSet(options);
     const repos = [...new Set(tickets.map((ticket) => ticket.repo))];
     // Most ticks answer 304 for every repo and cost nothing against the limit.
-    const changed = previous === null
-      || (await Promise.all(repos.map(repoChanged))).some(Boolean);
+    const changed =
+      previous === null ||
+      (await Promise.all(repos.map(repoChanged))).some(Boolean);
 
     if (changed) {
       await resolveStatuses(tickets);
@@ -526,19 +876,38 @@ async function commandWatch(options) {
           const before = previous.get(key);
           if (!before) continue;
           if (before.status !== ticket.status) {
-            const detail = ticket.status === "BLOCKED" ? "blocked by " + ticket.openBlockers.join(", ")
-              : ticket.pr ? "PR #" + ticket.pr : "";
-            console.log(ticket.status.padEnd(9) + key + "  " + ticket.title + (detail ? "  " + detail : ""));
+            const detail =
+              ticket.status === "BLOCKED"
+                ? "blocked by " + ticket.openBlockers.join(", ")
+                : ticket.pr
+                  ? "PR #" + ticket.pr
+                  : "";
+            console.log(
+              ticket.status.padEnd(9) +
+                key +
+                "  " +
+                ticket.title +
+                (detail ? "  " + detail : ""),
+            );
           }
           if (ticket.stale && !before.stale) {
-            console.log("STALE    " + key + "  " + ticket.title +
-              "  claimed " + ticket.claimedMinutes + " min ago, still no PR");
+            console.log(
+              "STALE    " +
+                key +
+                "  " +
+                ticket.title +
+                "  claimed " +
+                ticket.claimedMinutes +
+                " min ago, still no PR",
+            );
           }
         }
       }
       previous = now;
       if (![...now.values()].some((ticket) => ticket.status !== "DONE")) {
-        console.log("EPIC COMPLETE: " + tickets.length + " tickets, all closed.");
+        console.log(
+          "EPIC COMPLETE: " + tickets.length + " tickets, all closed.",
+        );
         return 0;
       }
     }
@@ -550,13 +919,24 @@ async function commandWatch(options) {
 
 const argv = process.argv.slice(2);
 const command = argv.shift();
-if (!command || command === "--help" || command === "-h") { console.log(USAGE); process.exit(0); }
+if (!command || command === "--help" || command === "-h") {
+  console.log(USAGE);
+  process.exit(0);
+}
 
 const options = {};
 const FLAGS = {
-  "--epic": "epic", "--tickets": "tickets", "--repo": "repo", "--ticket": "ticket",
-  "--model": "model", "--pr": "pr", "--reason": "reason", "--blocked-on": "blockedOn", "--base": "base",
-  "--note": "note", "--interval": "interval",
+  "--epic": "epic",
+  "--tickets": "tickets",
+  "--repo": "repo",
+  "--ticket": "ticket",
+  "--model": "model",
+  "--pr": "pr",
+  "--reason": "reason",
+  "--blocked-on": "blockedOn",
+  "--base": "base",
+  "--note": "note",
+  "--interval": "interval",
 };
 for (let index = 0; index < argv.length; index++) {
   const flag = argv[index];
@@ -571,12 +951,18 @@ const setCommands = new Set(["preflight", "frontier", "watch"]);
 if (setCommands.has(command) && !options.epic === !options.tickets) {
   usageError(command + " needs exactly one of --epic or --tickets");
 }
-if (!setCommands.has(command) && !options.ticket) usageError(command + " needs --ticket owner/repo#123");
+if (!setCommands.has(command) && !options.ticket)
+  usageError(command + " needs --ticket owner/repo#123");
 
 const commands = {
-  preflight: commandPreflight, frontier: commandFrontier, watch: commandWatch,
-  claim: commandClaim, return: commandReturn, "hand-back": commandHandBack,
-  "check-pr": commandCheckPr, "check-merged": commandCheckMerged,
+  preflight: commandPreflight,
+  frontier: commandFrontier,
+  watch: commandWatch,
+  claim: commandClaim,
+  return: commandReturn,
+  "hand-back": commandHandBack,
+  "check-pr": commandCheckPr,
+  "check-merged": commandCheckMerged,
 };
 if (!commands[command]) usageError("unknown command " + command);
 process.exit(await commands[command](options));
