@@ -1,5 +1,13 @@
 # mattpocock-skills
 
+## 1.3.1
+
+### Patch Changes
+
+- [#24](https://github.com/Odame/skills/pull/24) [`973b479`](https://github.com/Odame/skills/commit/973b47926cd9cdbb7f69ab99de6b960ed2d21dd5) Thanks [@Odame](https://github.com/Odame)! - Declares `implement-with-agent-team`'s teammate model-selection guard as a plugin hook (`hooks/hooks.json`, `PreToolUse` on `Agent`), so installing the plugin wires it up automatically instead of requiring a manual edit to the installer's global `settings.json`.
+
+- [#22](https://github.com/Odame/skills/pull/22) [`b94c588`](https://github.com/Odame/skills/commit/b94c588fbcb1b1e20361d5756202fc8cb75cdcd1) Thanks [@Odame](https://github.com/Odame)! - `implement-with-agent-team`'s `tickets.mjs` now guards its CLI entry point, so importing the file runs no command. Its marker-parsing and other pure functions are exported and covered by a first test suite.
+
 ## 1.3.0
 
 ### Minor Changes
