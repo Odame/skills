@@ -1,0 +1,31 @@
+# Per-check tuning for plainspeak.
+# Copied here on first run. Edit this file, not the copy inside the plugin.
+# Delete any line to fall back to the built-in default.
+
+[wordfreq]
+# Flags words that are rare in everyday English. Never blocks an edit.
+enabled = true
+# A word is flagged when its Zipf frequency falls below this number.
+# Zipf runs from 0 (never seen) to about 7 ("the"). Raise it to catch more words,
+# lower it if the warnings come too often.
+zipf_threshold = 2.5
+# Words this check must never flag, however rare they are.
+allowlist = []
+
+[textstat]
+# Flags sentences that read too hard. Never blocks an edit.
+enabled = true
+# A sentence is flagged when its Flesch Reading Ease score falls below this number.
+# The scale runs from about 0 (very hard) to about 100 (very easy): 60 and above reads
+# as plain English, below 50 reads as college level. Lower it if the warnings come too
+# often. Sentences under 8 words are never scored: the formula is unreliable on them.
+flesch_reading_ease_threshold = 50.0
+# This check scores whole sentences, not single terms, so it has no allowlist.
+
+[idiom]
+# Flags idioms and cliches from the bundled MAGPIE-derived list. Never blocks an edit.
+# Only the base form of an idiom is matched: "kick the bucket" is caught, "kicked the
+# bucket" is not.
+enabled = true
+# Idioms this check must never flag. Write each one in the same base form the list uses.
+allowlist = []

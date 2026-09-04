@@ -1,3 +1,14 @@
 node_modules
 .claude/*
 !.claude/skills/
+
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.spec
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+uv.lock.bak
