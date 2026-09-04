@@ -1,5 +1,11 @@
 # odame-skills
 
+## 1.4.0
+
+### Minor Changes
+
+- [#25](https://github.com/Odame/skills/pull/25) [`6483899`](https://github.com/Odame/skills/commit/64838997793b93e7e2889fd95c0a99c760cf9736) Thanks [@Odame](https://github.com/Odame)! - Renames the plugin from `mattpocock-skills` to `odame-skills`, matching the fork's marketplace id (`odame`). `package.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, and every install command in this fork's docs now reference `odame-skills`. Skill and slash-command names are unchanged; upstream's own official `mattpocock-skills` plugin listing is untouched. Anyone who installed via `claude plugin install mattpocock-skills@odame` must reinstall with `claude plugin install odame-skills@odame`.
+
 ## 1.3.1
 
 ### Patch Changes
