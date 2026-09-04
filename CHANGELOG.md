@@ -1,4 +1,4 @@
-# mattpocock-skills
+# odame-skills
 
 ## 1.3.1
 

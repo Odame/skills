@@ -48,11 +48,11 @@ This fork:
 
 ```bash
 claude plugin marketplace add Odame/skills
-claude plugin install mattpocock-skills@odame
+claude plugin install odame-skills@odame
 ```
 
-The plugin keeps the name `mattpocock-skills`, so every slash command is the one
-Matt documents. Only the marketplace id differs.
+The plugin is renamed `odame-skills`; every skill and slash command keeps the
+name Matt documents, only the plugin id differs.
 
 Matt's original, with none of the local changes:
 
