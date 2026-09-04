@@ -5,7 +5,7 @@ requires-python = ">=3.11"
 [manifest]
 members = [
     "odame-skills",
-    "plain-english-checker",
+    "plainspeak",
 ]
 
 [[package]]
@@ -225,9 +225,9 @@ wheels = [
 ]
 
 [[package]]
-name = "plain-english-checker"
+name = "plainspeak"
 version = "0.1.0"
-source = { editable = "plugins/plain-english-checker" }
+source = { editable = "plugins/plainspeak" }
 dependencies = [
     { name = "textstat" },
     { name = "tomlkit" },

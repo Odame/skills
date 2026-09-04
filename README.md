@@ -107,16 +107,16 @@ This repo's marketplace (`Odame/skills`, configured name `odame`) also carries
 plugins that aren't part of the skills set above and aren't installed by
 `odame-skills`. Each is opt-in on its own:
 
-- **[plain-english-checker](./plugins/plain-english-checker/)**: blocks banned
-  jargon on Write/Edit, warns on uncommon words, hard-to-read sentences, and
-  idioms, and lets you grow the ban list from conversation with the `ban-term` and
-  `unban-term` skills. It installs a `PostToolUse` hook that runs on every
-  Write/Edit/MultiEdit in any project where it's installed, so it ships as its own
-  plugin rather than folded into `odame-skills`.
+- **[plainspeak](./plugins/plainspeak/)**: blocks banned jargon on Write/Edit,
+  warns on uncommon words, hard-to-read sentences, and idioms, and lets you grow
+  the ban list from conversation with the `ban-term` and `unban-term` skills. It
+  installs a `PostToolUse` hook that runs on every Write/Edit/MultiEdit in any
+  project where it's installed, so it ships as its own plugin rather than folded
+  into `odame-skills`.
 
   ```bash
   claude plugin marketplace add Odame/skills
-  claude plugin install plain-english-checker@odame
+  claude plugin install plainspeak@odame
   ```
 
 ## What's different in this fork

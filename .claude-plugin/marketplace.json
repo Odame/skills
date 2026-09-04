@@ -20,8 +20,8 @@
       ]
     },
     {
-      "name": "plain-english-checker",
-      "source": "./plugins/plain-english-checker",
+      "name": "plainspeak",
+      "source": "./plugins/plainspeak",
       "description": "Blocks banned jargon on Write/Edit, warns on uncommon words, hard-to-read sentences, and idioms, and lets you grow the ban list from conversation.",
       "category": "writing",
       "keywords": [
