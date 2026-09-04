@@ -1,8 +1,12 @@
 # Local patches
 
 This fork tracks [`mattpocock/skills`](https://github.com/mattpocock/skills) and
-carries the divergences below. Each is a single commit, so
-`git rebase upstream/main` stays mechanical.
+carries the divergences below. Each row is a content shape,
+checked by [`scripts/verify-patches.mjs`](./scripts/verify-patches.mjs)
+against present/absent marker strings, not a commit count: a divergence can
+land as several commits over time (`engineering/implement-with-agent-team`
+has), and `git rebase upstream/main` replays each of those individually
+rather than one clean commit.
 
 | What                                                                                               | Divergence                                                                                                                                                      | Why                                                                                                                                                                                                                                                                                                                                                                        |
 | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
