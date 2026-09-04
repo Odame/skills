@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-LIVE_WORDLIST_PATH = Path.home() / ".claude" / "plain-english-checker" / "banned-words.txt"
-
 
 def parse_wordlist(text: str) -> list[str]:
     """Parse wordlist file contents into an ordered list of banned terms.

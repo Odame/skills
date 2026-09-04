@@ -4,8 +4,9 @@ from collections.abc import Iterable
 from importlib import resources
 
 from plain_english_checker.checks import CheckSpec, Severity, register_check
-from plain_english_checker.config import LIVE_CONFIG_PATH, CheckerSettings, IdiomSettings
+from plain_english_checker.config import CheckerSettings, IdiomSettings
 from plain_english_checker.matcher import find_matches
+from plain_english_checker.paths import LIVE_PATHS
 from plain_english_checker.wordlist import parse_wordlist
 
 IDIOM_CHECK_NAME = "idiom"
@@ -47,7 +48,7 @@ def _describe(hits: list[str]) -> str:
     return (
         f"Idiom(s) used: {', '.join(hits)}. Readers who learned English as a second "
         "language will not know them. Say the plain meaning instead, or add an idiom to "
-        f"the idiom allowlist in {LIVE_CONFIG_PATH} when it is the right wording to keep."
+        f"the idiom allowlist in {LIVE_PATHS.config_path} when it is the right wording to keep."
     )
 
 

@@ -6,7 +6,8 @@ from collections.abc import Iterable
 from wordfreq import zipf_frequency
 
 from plain_english_checker.checks import CheckSpec, Severity, register_check
-from plain_english_checker.config import LIVE_CONFIG_PATH, CheckerSettings, WordfreqSettings
+from plain_english_checker.config import CheckerSettings, WordfreqSettings
+from plain_english_checker.paths import LIVE_PATHS
 
 WORDFREQ_CHECK_NAME = "wordfreq"
 
@@ -84,7 +85,7 @@ def _describe(hits: list[str]) -> str:
     return (
         f"Uncommon word(s) used: {', '.join(hits)}. Most readers will not know them. "
         "Rewrite with everyday words, or add a word to the wordfreq allowlist in "
-        f"{LIVE_CONFIG_PATH} when it is the right word to keep."
+        f"{LIVE_PATHS.config_path} when it is the right word to keep."
     )
 
 

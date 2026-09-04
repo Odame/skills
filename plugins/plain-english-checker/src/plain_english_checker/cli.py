@@ -7,15 +7,10 @@ from importlib import resources
 from pathlib import Path
 
 from plain_english_checker.checks import Severity, emit_findings, run_checks
-from plain_english_checker.config import LIVE_CONFIG_PATH, load_config
+from plain_english_checker.config import load_config
 from plain_english_checker.hook_payload import changed_text_segments, session_id_of
-from plain_english_checker.tracking import (
-    BLOCK_OUTCOME,
-    TRACKING_DATABASE_PATH,
-    WARN_OUTCOME,
-    record_outcome,
-)
-from plain_english_checker.wordlist import LIVE_WORDLIST_PATH
+from plain_english_checker.paths import LIVE_PATHS
+from plain_english_checker.tracking import BLOCK_OUTCOME, WARN_OUTCOME, record_outcome
 
 SEED_WORDLIST_RESOURCE = "seed_wordlist.txt"
 SEED_CONFIG_RESOURCE = "seed_config.toml"
@@ -26,7 +21,7 @@ def _record_outcome_without_failing_the_check(payload: dict, check_name: str, ou
     """Tracking is a usage signal, so a broken store must never change a check's outcome."""
     try:
         record_outcome(
-            TRACKING_DATABASE_PATH,
+            LIVE_PATHS.tracking_database_path,
             session_id=session_id_of(payload),
             check_name=check_name,
             outcome=outcome,
@@ -51,7 +46,7 @@ def check(argv: list[str]) -> int:
         return 0
 
     written_text = "\n".join(segments)
-    settings = load_config(LIVE_CONFIG_PATH)
+    settings = load_config(LIVE_PATHS.config_path)
     _import_enabled_checks(settings)
 
     findings = run_checks(written_text, settings)
@@ -91,10 +86,41 @@ def _additional_context_output(finding: str) -> dict:
     }
 
 
+def ban(argv: list[str]) -> int:
+    """Add a term to the banned wordlist, from an agent following the `ban-term` skill."""
+    if not argv:
+        print("usage: plain-english-checker ban <term>", file=sys.stderr)
+        return 1
+    from plain_english_checker import term_editor
+
+    result = term_editor.ban_term(" ".join(argv))
+    if result.wordlist_changed:
+        print(f"'{result.term}' is now banned.")
+    else:
+        print(f"'{result.term}' was already banned.")
+    return 0
+
+
+def unban(argv: list[str]) -> int:
+    """Remove a term everywhere it's flagged, from an agent following the `unban-term` skill."""
+    if not argv:
+        print("usage: plain-english-checker unban <term>", file=sys.stderr)
+        return 1
+    from plain_english_checker import term_editor
+
+    result = term_editor.unban_term(" ".join(argv))
+    print(f"wordlist: {'removed' if result.wordlist_changed else 'was not banned'}")
+    print(
+        f"wordfreq allowlist: {'added' if result.wordfreq_allowlist_changed else 'already there'}"
+    )
+    print(f"idiom allowlist: {'added' if result.idiom_allowlist_changed else 'already there'}")
+    return 0
+
+
 def seed(argv: list[str]) -> int:
     """Copy the seed wordlist and seed config to their live paths, never clobbering."""
-    _copy_seed_file(LIVE_WORDLIST_PATH, SEED_WORDLIST_RESOURCE)
-    _copy_seed_file(LIVE_CONFIG_PATH, SEED_CONFIG_RESOURCE)
+    _copy_seed_file(LIVE_PATHS.wordlist_path, SEED_WORDLIST_RESOURCE)
+    _copy_seed_file(LIVE_PATHS.config_path, SEED_CONFIG_RESOURCE)
     return 0
 
 
@@ -108,7 +134,7 @@ def _copy_seed_file(live_path: Path, resource_name: str) -> None:
     live_path.write_text(seed_text, encoding="utf-8")
 
 
-COMMANDS = {"check": check, "seed": seed}
+COMMANDS = {"check": check, "seed": seed, "ban": ban, "unban": unban}
 
 
 def main() -> None:

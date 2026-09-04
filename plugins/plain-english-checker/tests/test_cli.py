@@ -5,30 +5,37 @@ from pathlib import Path
 
 import pytest
 
-from plain_english_checker import banned_word_check, cli
+from plain_english_checker import cli
 from plain_english_checker.config import CheckerSettings, load_config
+from plain_english_checker.paths import LIVE_PATHS
+
+
+@pytest.fixture(autouse=True)
+def live_paths(monkeypatch, tmp_path: Path):
+    """Point the shared `LIVE_PATHS` singleton at a fresh directory for this test.
+
+    Every one of `wordlist_path`/`tracking_database_path`/`config_path` below reads
+    off this same object, so patching `base_directory` once here is the only patch
+    any of them, or any future module that reads `LIVE_PATHS` directly, needs.
+    """
+    monkeypatch.setattr(LIVE_PATHS, "base_directory", tmp_path)
+    return LIVE_PATHS
 
 
 @pytest.fixture
-def wordlist_path(monkeypatch, tmp_path: Path) -> Path:
-    path = tmp_path / "banned-words.txt"
-    path.write_text("utilize\nleverage\n", encoding="utf-8")
-    monkeypatch.setattr(banned_word_check, "LIVE_WORDLIST_PATH", path)
-    return path
+def wordlist_path(live_paths) -> Path:
+    live_paths.wordlist_path.write_text("utilize\nleverage\n", encoding="utf-8")
+    return live_paths.wordlist_path
 
 
 @pytest.fixture(autouse=True)
-def tracking_database_path(monkeypatch, tmp_path: Path) -> Path:
-    path = tmp_path / "tracking.sqlite3"
-    monkeypatch.setattr(cli, "TRACKING_DATABASE_PATH", path)
-    return path
+def tracking_database_path(live_paths) -> Path:
+    return live_paths.tracking_database_path
 
 
 @pytest.fixture(autouse=True)
-def config_path(monkeypatch, tmp_path: Path) -> Path:
-    path = tmp_path / "config.toml"
-    monkeypatch.setattr(cli, "LIVE_CONFIG_PATH", path)
-    return path
+def config_path(live_paths) -> Path:
+    return live_paths.config_path
 
 
 HARD_TO_READ = (
@@ -182,8 +189,8 @@ def test_clean_new_text_produces_no_output(
     assert captured.err == ""
 
 
-def test_missing_wordlist_produces_no_output(monkeypatch, capsys, tmp_path, tracking_database_path):
-    monkeypatch.setattr(banned_word_check, "LIVE_WORDLIST_PATH", tmp_path / "does-not-exist.txt")
+def test_missing_wordlist_produces_no_output(monkeypatch, capsys, tracking_database_path):
+    # No `wordlist_path` fixture requested, so `live_paths.wordlist_path` stays unwritten.
     feed_payload(
         monkeypatch,
         {"tool_name": "Edit", "tool_input": {"new_string": "please utilize this"}},
@@ -236,21 +243,24 @@ def test_a_block_is_recorded_against_the_payload_session(
 
 
 def test_an_unwritable_tracking_store_does_not_stop_the_block(
-    monkeypatch, capsys, wordlist_path, tmp_path
+    monkeypatch, capsys, wordlist_path, live_paths
 ):
-    unwritable = tmp_path / "not-a-directory" / "tracking.sqlite3"
-    (tmp_path / "not-a-directory").write_text("", encoding="utf-8")
-    monkeypatch.setattr(cli, "TRACKING_DATABASE_PATH", unwritable)
-    feed_payload(
-        monkeypatch,
-        {"tool_name": "Edit", "tool_input": {"new_string": "please utilize this"}},
-    )
+    # `base_directory` holds all three live paths, so making it read-only is what
+    # makes *this* one, the not-yet-created tracking.sqlite3, unwritable.
+    live_paths.base_directory.chmod(0o555)
+    try:
+        feed_payload(
+            monkeypatch,
+            {"tool_name": "Edit", "tool_input": {"new_string": "please utilize this"}},
+        )
 
-    exit_code = cli.check([])
-    captured = capsys.readouterr()
+        exit_code = cli.check([])
+        captured = capsys.readouterr()
 
-    assert exit_code == 2
-    assert "utilize" in captured.err
+        assert exit_code == 2
+        assert "utilize" in captured.err
+    finally:
+        live_paths.base_directory.chmod(0o755)
 
 
 def test_an_uncommon_word_warns_without_blocking(
@@ -299,9 +309,9 @@ def test_a_block_and_a_warn_on_the_same_edit_keep_both_outputs(
 
 
 def test_an_uncommon_word_warns_even_without_a_wordlist(
-    monkeypatch, capsys, tmp_path, tracking_database_path
+    monkeypatch, capsys, tracking_database_path
 ):
-    monkeypatch.setattr(banned_word_check, "LIVE_WORDLIST_PATH", tmp_path / "does-not-exist.txt")
+    # No `wordlist_path` fixture requested, so `live_paths.wordlist_path` stays unwritten.
     feed_payload(
         monkeypatch,
         {"tool_name": "Edit", "tool_input": {"new_string": "the change was idempotent"}},
@@ -675,42 +685,98 @@ def test_a_block_and_all_three_warns_on_one_edit_keep_every_output(
     ]
 
 
-def test_seed_creates_live_wordlist_when_missing(monkeypatch, tmp_path):
-    path = tmp_path / "nested" / "banned-words.txt"
-    monkeypatch.setattr(cli, "LIVE_WORDLIST_PATH", path)
+def test_seed_creates_live_wordlist_when_missing(monkeypatch, live_paths, tmp_path):
+    monkeypatch.setattr(live_paths, "base_directory", tmp_path / "nested")
 
     exit_code = cli.seed([])
 
     assert exit_code == 0
-    assert path.is_file()
-    assert "utilize" in path.read_text(encoding="utf-8")
+    assert live_paths.wordlist_path.is_file()
+    assert "utilize" in live_paths.wordlist_path.read_text(encoding="utf-8")
 
 
-def test_seed_does_not_clobber_existing_live_wordlist(monkeypatch, tmp_path):
-    path = tmp_path / "banned-words.txt"
-    path.write_text("my-custom-term\n", encoding="utf-8")
-    monkeypatch.setattr(cli, "LIVE_WORDLIST_PATH", path)
+def test_seed_does_not_clobber_existing_live_wordlist(live_paths):
+    live_paths.wordlist_path.write_text("my-custom-term\n", encoding="utf-8")
 
     exit_code = cli.seed([])
 
     assert exit_code == 0
-    assert path.read_text(encoding="utf-8") == "my-custom-term\n"
+    assert live_paths.wordlist_path.read_text(encoding="utf-8") == "my-custom-term\n"
 
 
-def test_seed_writes_a_config_matching_the_built_in_defaults(monkeypatch, tmp_path, config_path):
-    monkeypatch.setattr(cli, "LIVE_WORDLIST_PATH", tmp_path / "banned-words.txt")
-
+def test_seed_writes_a_config_matching_the_built_in_defaults(config_path):
     exit_code = cli.seed([])
 
     assert exit_code == 0
     assert load_config(config_path) == CheckerSettings()
 
 
-def test_seed_does_not_clobber_an_existing_config(monkeypatch, tmp_path, config_path):
-    monkeypatch.setattr(cli, "LIVE_WORDLIST_PATH", tmp_path / "banned-words.txt")
+def test_seed_does_not_clobber_an_existing_config(config_path):
     config_path.write_text("[wordfreq]\nenabled = false\n", encoding="utf-8")
 
     exit_code = cli.seed([])
 
     assert exit_code == 0
     assert load_config(config_path).wordfreq.enabled is False
+
+
+def test_ban_with_no_argument_prints_usage_and_exits_one(capsys):
+    exit_code = cli.ban([])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "usage" in captured.err
+
+
+def test_ban_a_new_term_reports_it_is_now_banned(capsys, live_paths):
+    exit_code = cli.ban(["synergize"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "synergize" in captured.out
+    assert "now banned" in captured.out
+    assert "synergize" in live_paths.wordlist_path.read_text(encoding="utf-8")
+
+
+def test_ban_an_existing_term_reports_it_was_already_banned(capsys, wordlist_path):
+    exit_code = cli.ban(["utilize"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "already banned" in captured.out
+
+
+def test_ban_joins_multiple_argv_words_into_one_phrase(capsys, live_paths):
+    cli.ban(["in", "order", "to"])
+
+    assert "in order to" in live_paths.wordlist_path.read_text(encoding="utf-8")
+
+
+def test_unban_with_no_argument_prints_usage_and_exits_one(capsys):
+    exit_code = cli.unban([])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "usage" in captured.err
+
+
+def test_unban_a_flagged_term_reports_all_three_results(capsys, wordlist_path, config_path):
+    exit_code = cli.unban(["leverage"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "wordlist: removed" in captured.out
+    assert "wordfreq allowlist: added" in captured.out
+    assert "idiom allowlist: added" in captured.out
+    assert "leverage" not in wordlist_path.read_text(encoding="utf-8")
+    settings = load_config(config_path)
+    assert "leverage" in settings.wordfreq.allowlist
+    assert "leverage" in settings.idiom.allowlist
+
+
+def test_unban_a_term_that_was_never_banned_reports_that(capsys, live_paths):
+    exit_code = cli.unban(["idempotent"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "wordlist: was not banned" in captured.out

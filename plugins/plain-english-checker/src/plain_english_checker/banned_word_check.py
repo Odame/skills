@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from plain_english_checker.checks import CheckSpec, Severity, register_check
 from plain_english_checker.config import CheckerSettings
 from plain_english_checker.matcher import find_matches
-from plain_english_checker.wordlist import LIVE_WORDLIST_PATH, load_wordlist
+from plain_english_checker.paths import LIVE_PATHS
+from plain_english_checker.wordlist import load_wordlist
 
 BANNED_WORD_CHECK_NAME = "banned-word"
 
@@ -18,7 +19,7 @@ class BannedWordSettings:
 
 def _settings_of(_settings: CheckerSettings) -> BannedWordSettings:
     """There is no config toggle for this check: it is on whenever the wordlist has terms."""
-    terms = tuple(load_wordlist(LIVE_WORDLIST_PATH))
+    terms = tuple(load_wordlist(LIVE_PATHS.wordlist_path))
     return BannedWordSettings(enabled=bool(terms), terms=terms)
 
 

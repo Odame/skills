@@ -5,7 +5,8 @@ import re
 import textstat
 
 from plain_english_checker.checks import CheckSpec, Severity, register_check
-from plain_english_checker.config import LIVE_CONFIG_PATH, CheckerSettings, TextstatSettings
+from plain_english_checker.config import CheckerSettings, TextstatSettings
+from plain_english_checker.paths import LIVE_PATHS
 
 TEXTSTAT_CHECK_NAME = "textstat"
 
@@ -81,7 +82,7 @@ def _describe(hits: list[str]) -> str:
     return (
         f"Sentence(s) that read too hard:\n{listed}\n"
         "Split each one into shorter sentences and use everyday words. Lower "
-        f"flesch_reading_ease_threshold in {LIVE_CONFIG_PATH} when this warning "
+        f"flesch_reading_ease_threshold in {LIVE_PATHS.config_path} when this warning "
         "comes too often."
     )
 

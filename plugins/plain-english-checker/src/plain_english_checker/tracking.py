@@ -4,8 +4,6 @@ import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 
-TRACKING_DATABASE_PATH = Path.home() / ".claude" / "plain-english-checker" / "tracking.sqlite3"
-
 BLOCK_OUTCOME = "block"
 WARN_OUTCOME = "warn"
 

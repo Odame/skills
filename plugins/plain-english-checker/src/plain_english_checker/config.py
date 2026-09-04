@@ -4,10 +4,6 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from plain_english_checker.wordlist import LIVE_WORDLIST_PATH
-
-LIVE_CONFIG_PATH = LIVE_WORDLIST_PATH.parent / "config.toml"
-
 WORDFREQ_SECTION = "wordfreq"
 TEXTSTAT_SECTION = "textstat"
 IDIOM_SECTION = "idiom"
