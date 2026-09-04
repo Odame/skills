@@ -1,13 +1,13 @@
 {
-  "name": "mattpocock-skills",
+  "name": "odame-skills",
   "version": "1.3.1",
-  "description": "Matt Pocock's agent skills for real engineering: grilling, spec/ticket flows, TDD, code review, domain modelling and more. Plug-and-play, not vibe coding.",
+  "description": "Prince Odame's fork of Matt Pocock's agent skills for real engineering: grilling, spec/ticket flows, TDD, code review, domain modelling and more. Plug-and-play, not vibe coding.",
   "author": {
-    "name": "Matt Pocock",
-    "url": "https://www.aihero.dev"
+    "name": "Prince Odame",
+    "url": "https://github.com/Odame/skills"
   },
-  "homepage": "https://www.aihero.dev/s/skills-newsletter",
-  "repository": "https://github.com/mattpocock/skills",
+  "homepage": "https://github.com/Odame/skills",
+  "repository": "https://github.com/Odame/skills",
   "license": "MIT",
   "keywords": [
     "engineering",

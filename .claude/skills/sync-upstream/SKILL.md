@@ -58,7 +58,7 @@ If this sync is running under an `unlazy` ledger, that script is the gate:
 
 ```bash
 git push --force-with-lease origin main
-claude plugin update mattpocock-skills@odame
+claude plugin update odame-skills@odame
 ```
 
 `--force-with-lease`, never `--force`: the rebase rewrites history, and the lease

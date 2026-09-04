@@ -56,8 +56,14 @@ const divergences = [
   {
     name: "package metadata names this fork",
     file: "package.json",
-    present: ["https://github.com/Odame/skills"],
-    absent: ["https://github.com/mattpocock/skills"],
+    present: ["https://github.com/Odame/skills", '"name": "odame-skills"'],
+    absent: ["https://github.com/mattpocock/skills", '"name": "mattpocock-skills"'],
+  },
+  {
+    name: "the plugin is renamed for this fork",
+    file: ".claude-plugin/plugin.json",
+    present: ['"name": "odame-skills"'],
+    absent: ['"name": "mattpocock-skills"'],
   },
   {
     name: "the repo-local skills are tracked",
@@ -68,8 +74,8 @@ const divergences = [
   {
     name: "the marketplace is named for this fork",
     file: ".claude-plugin/marketplace.json",
-    present: ['"name": "odame"'],
-    absent: ['"name": "mattpocock"'],
+    present: ['"name": "odame"', '"name": "odame-skills"'],
+    absent: ['"name": "mattpocock"', '"name": "mattpocock-skills"'],
   },
 ];
 

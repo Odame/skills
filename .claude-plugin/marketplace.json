@@ -7,7 +7,7 @@
   "description": "Prince Odame's fork of Matt Pocock's skills, with local divergences recorded in PATCHES.md.",
   "plugins": [
     {
-      "name": "mattpocock-skills",
+      "name": "odame-skills",
       "source": "./",
       "description": "Matt Pocock's agent skills for real engineering (grilling, spec/ticket flows, TDD, code review, domain modelling and more).",
       "category": "engineering",
