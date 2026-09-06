@@ -27,6 +27,12 @@ Work is dispatched a frontier at a time, not a round at a time. A ticket starts 
 
 One consequence is worth knowing, because it removes a whole category of work: since a ticket only starts once its blockers have merged, the base branch already contains them. Every teammate branches off it, nothing is stacked on anything, and no rebase chain has to be landed at the end.
 
+## Landing
+
+By default a run lands on `epic/<number>-<slug>`, an integration branch named after the epic. It is created once, the first time it's needed. Every ticket's pull request targets that branch, not `main`, and merging one needs no approval: it is not shared history yet. One pull request, opened once the run finishes, carries the whole epic into `main`. Twenty tickets become one review at the end, not twenty scattered across the week.
+
+Pass an existing or new branch to land somewhere else instead. Pass the repository's own default branch to skip the integration branch entirely: each pull request then closes its ticket on merge, the way a single [implement](https://aihero.dev/skills-implement) run already does.
+
 ## Verification is a command, not a judgement
 
 A teammate's report is its own account of its own work. Rather than reading it and forming a view, the lead runs a check that reads the pull request itself: whether it closes the ticket, what it targets, whether it has commits, whether it is green and mergeable. A second check, after the merge, confirms the ticket actually closed. That one sounds like ceremony and is not: a merge that leaves its ticket open frees nothing downstream, and the run would circle a frontier that never advances.
@@ -48,6 +54,10 @@ Because that file becomes a third thing to trust, alongside git and the tracker,
 
 Nothing is lost. The next read of the frontier sees the pull request and moves the ticket along. What can happen is that the run sits idle waiting for news that never comes, so the skill also emits a change feed that reports each ticket as it moves, including a teammate that went quiet without ever opening a pull request.
 
+**Why land on a side branch instead of merging each ticket straight into `main`?**
+
+Because merging straight into `main` is shared history: every merge there would need a human's approval, one at a time, for as many tickets as the epic has. A branch nobody else has opened a pull request against yet is not shared, so the lead merges onto it freely and only `main` itself gets the one approval that matters.
+
 **Won't every teammate cost as much as the lead?**
 
 Only if a spawn forgets to say otherwise. The `model` parameter is optional and inherits the lead's, and a specced ticket rarely needs the expensive one. A guard refuses any teammate spawn that has not named its model, so the omission fails loudly instead of quietly costing several times more.
@@ -58,6 +68,7 @@ Only if a spawn forgets to say otherwise. The `model` parameter is optional and 
 - A ticket that came back with a broken pull request is caught before you merge it, not after.
 - Closing your laptop mid-run costs you nothing: the next session reads the tracker and carries on.
 - Every ticket that stopped tells you what would unblock it, and most of them unblock themselves.
+- Twenty tickets land as one pull request into `main`, not twenty.
 
 ## Where it fits
 

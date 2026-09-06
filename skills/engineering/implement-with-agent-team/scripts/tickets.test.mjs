@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { readMarker } from "./tickets.mjs";
+import { readMarker, integrationBranchFor, defaultBase } from "./tickets.mjs";
 
 const comment = (body, created_at = "2026-01-01T00:00:00Z") => ({
   body,
@@ -60,4 +60,23 @@ test("claimRecord's reduce: a later marker supersedes fields, but never wipes wh
   assert.equal(record.pr, 42);
   assert.equal(record.branch, "tkt-9-thing");
   assert.equal(record.base, "main");
+});
+
+test("integrationBranchFor names a branch after the epic's number and title", () => {
+  assert.equal(
+    integrationBranchFor({ number: 123, title: "Ship the Widget Dashboard!" }),
+    "epic/123-ship-the-widget-dashboard",
+  );
+});
+
+test("defaultBase uses --base when given, even with an epic in the set", () => {
+  const tickets = [];
+  tickets.epic = { number: 9, title: "Ignored" };
+  assert.equal(defaultBase(tickets, { base: "develop" }), "develop");
+});
+
+test("defaultBase falls back to the epic's integration branch absent --base", () => {
+  const tickets = [];
+  tickets.epic = { number: 9, title: "Onboarding Flow" };
+  assert.equal(defaultBase(tickets, {}), "epic/9-onboarding-flow");
 });
