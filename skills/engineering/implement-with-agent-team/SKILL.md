@@ -19,7 +19,7 @@ node $T --help
 node $T preflight --epic <id>
 ```
 
-Resolve everything it reports before dispatching.
+Resolve everything it reports before dispatching. No `--base` given: this creates the epic's integration branch in every repo the run touches. See **Landing**.
 
 ## The loop
 
@@ -105,9 +105,13 @@ node $T hand-back --ticket <id> --stuck --reason "<what would unblock it>"
 
 Reach for `--stuck` once `--blocked-on` is ruled out.
 
-## Landing on a branch
+## Landing
 
-Claim every ticket in the run with `--base <branch>`. Close each ticket by hand once its PR is merged, and open one PR from that branch when the frontier reports the run finished.
+By default a run lands on `epic/<number>-<slug>`, an integration branch `preflight` names after the epic and creates if it does not exist. Every ticket's PR targets it, not `main`, so merge each one same as any other on-return step, no approval needed: it is not shared history yet. Close each ticket by hand once its PR is merged (a merge into an integration branch does not close it), and open, never merge, the final PR from `epic/<number>-<slug>` into `main` once the frontier reports the run finished.
+
+Pass `--base <branch>` to `preflight` and `claim` to land somewhere else instead: an existing branch, or a new one you name. Creates it if it doesn't exist yet, same as the epic default. Pass your repo's actual default branch (e.g. `--base main`) to skip an integration branch entirely: tickets then close on merge, and there is no final PR to open.
+
+A `--tickets` run with no `--epic` has no epic to name a branch after: `--base` is required.
 
 ## Staying awake
 

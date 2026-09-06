@@ -31,10 +31,12 @@ const NO_CLAIM = {
 const USAGE = `usage: tickets.mjs <command> [options]
 
   preflight     --epic <id> | --tickets <ids>   everything that must hold before dispatch
+                [--base <branch>]              land on this branch instead of an epic branch;
+                                                created if it does not exist yet
   frontier      --epic <id> | --tickets <ids>   what is takeable, and what each ticket needs
   watch         --epic <id> | --tickets <ids>   emit one line per change; exits when finished
   claim         --ticket <id> --model <m>       take a ticket, and print the branch to build on
-                [--base <branch>]              land the run on an integration branch, not the default
+                [--base <branch>]              same override as preflight
   return        --ticket <id> --pr <n>          record that a teammate returned
   hand-back     --ticket <id> --stuck --reason <text>
   hand-back     --ticket <id> --blocked-on <id> --reason <text>
@@ -125,6 +127,24 @@ async function branchExists(repo, branch) {
   return found !== null;
 }
 
+/** Creates `branch` off the repo's default branch. Caller checks existence first. */
+async function ensureBranch(repo, branch) {
+  const base = await defaultBranch(repo);
+  const ref = await api(
+    `repos/${repo}/git/ref/heads/${encodeURIComponent(base)}`,
+  );
+  await gh([
+    "api",
+    "--method",
+    "POST",
+    `repos/${repo}/git/refs`,
+    "-f",
+    `ref=refs/heads/${branch}`,
+    "-f",
+    `sha=${ref.object.sha}`,
+  ]);
+}
+
 async function postComment(ticket, body) {
   await gh([
     "api",
@@ -148,6 +168,8 @@ function slugOf(title) {
 }
 
 const branchFor = (ticket) => `tkt-${ticket.number}-${slugOf(ticket.title)}`;
+const integrationBranchFor = (epic) =>
+  `epic/${epic.number}-${slugOf(epic.title)}`;
 
 const asTicket = (repo, issue) => ({
   repo,
@@ -168,9 +190,10 @@ async function ticketsFromList(list) {
 
 async function ticketsFromEpic(epicReference) {
   const epic = parseReference(epicReference, "--epic");
-  const children = await api(issuePath(epic, "/sub_issues"), {
-    paginate: true,
-  });
+  const [epicIssue, children] = await Promise.all([
+    api(issuePath(epic)),
+    api(issuePath(epic, "/sub_issues"), { paginate: true }),
+  ]);
 
   if (!children.length) {
     console.error(
@@ -181,9 +204,11 @@ async function ticketsFromEpic(epicReference) {
   }
 
   // Sub-issues can live in other repositories than the epic does.
-  return children.map((child) =>
+  const tickets = children.map((child) =>
     asTicket(child.repository ? child.repository.full_name : epic.repo, child),
   );
+  tickets.epic = { number: epic.number, title: epicIssue.title };
+  return tickets;
 }
 
 async function ticketSet(options) {
@@ -197,8 +222,19 @@ async function ticketSet(options) {
   if (!tickets.length)
     usageError(`no tickets left after --repo ${options.repo}`);
 
-  return tickets.sort((a, b) =>
+  const sorted = tickets.sort((a, b) =>
     asKey(a).localeCompare(asKey(b), "en", { numeric: true }),
+  );
+  if (all.epic) sorted.epic = all.epic;
+  return sorted;
+}
+
+/** The branch a run lands on absent `--base`: an integration branch named after its epic. */
+function defaultBase(tickets, options) {
+  if (options.base) return options.base;
+  if (tickets.epic) return integrationBranchFor(tickets.epic);
+  usageError(
+    "no --base given, and --tickets has no epic to name a branch after. Pass --base explicitly.",
   );
 }
 
@@ -241,6 +277,17 @@ async function claimRecord(ticket) {
 /** The base a ticket is built on: what it was claimed against, else the repo default. */
 async function baseFor(ticket, record) {
   return record?.base || (await defaultBranch(ticket.repo));
+}
+
+/** The branch a first claim lands on absent `--base`: the parent epic's integration branch. */
+async function branchFromParentEpic(ticket) {
+  const parent = await api(issuePath(ticket, "/parent"), { tolerate: true });
+  if (!parent) {
+    usageError(
+      `${asKey(ticket)} has no parent epic, and no --base was given. Pass --base explicitly.`,
+    );
+  }
+  return integrationBranchFor(parent);
 }
 
 async function openBlockersOf(ticket) {
@@ -453,20 +500,21 @@ async function commandPreflight(options) {
   const tickets = await resolveStatuses(await ticketSet(options));
   console.log(`tickets    ${tickets.length} in the set`);
 
+  const branch = defaultBase(tickets, options);
+  let onIntegration = false;
+
   for (const repo of [...new Set(tickets.map((one) => one.repo))].sort()) {
-    const branch = options.base || (await defaultBranch(repo));
-    const missing = options.base && !(await branchExists(repo, options.base));
-    console.log(
-      `base       ${repo} -> ${branch}${missing ? "   MISSING" : ""}`,
-    );
-    if (missing) {
-      problems.push(
-        `\`${options.base}\` does not exist in ${repo}. Every repository in the run ` +
-          `needs the branch before a ticket can be claimed against it.`,
-      );
+    const onDefault = branch === (await defaultBranch(repo));
+    onIntegration = onIntegration || !onDefault;
+
+    if (!onDefault && !(await branchExists(repo, branch))) {
+      await ensureBranch(repo, branch);
+      console.log(`base       ${repo} -> ${branch}   CREATED`);
+    } else {
+      console.log(`base       ${repo} -> ${branch}`);
     }
   }
-  if (options.base) {
+  if (onIntegration) {
     note(
       "on an integration branch a merge does not close its ticket, so each one is closed by " +
         "hand; check-merged holds the run until that happens",
@@ -549,15 +597,11 @@ async function commandClaim(options) {
 
   const branch = record.branch || branchFor(ticket);
   const base =
-    options.base || record.base || (await defaultBranch(ticket.repo));
+    options.base || record.base || (await branchFromParentEpic(ticket));
 
-  if (!(await branchExists(ticket.repo, base))) {
-    console.log(`NO SUCH BASE: \`${base}\` does not exist in ${ticket.repo}.`);
-    console.log(
-      "Create it and push it before claiming, or drop --base to build on the default branch.",
-    );
-    return 2;
-  }
+  const onDefault = base === (await defaultBranch(ticket.repo));
+  const created = !onDefault && !(await branchExists(ticket.repo, base));
+  if (created) await ensureBranch(ticket.repo, base);
 
   await postComment(
     ticket,
@@ -565,8 +609,8 @@ async function commandClaim(options) {
   );
 
   console.log(`branch ${branch}`);
-  console.log(`base   ${base}`);
-  if (base !== (await defaultBranch(ticket.repo))) {
+  console.log(`base   ${base}${created ? "   (created)" : ""}`);
+  if (!onDefault) {
     console.log(
       `note   merging into \`${base}\` will not close #${ticket.number} on its own, ` +
         `so close it after the merge; check-merged holds the run until you do.`,
@@ -1003,6 +1047,8 @@ export {
   issuePath,
   slugOf,
   branchFor,
+  integrationBranchFor,
+  defaultBase,
   asTicket,
   readMarker,
   noteFor,
