@@ -1,6 +1,6 @@
 ---
 name: implement
-description: Implement the work described by a spec or a ticket, test-first at pre-agreed seams, reviewed before it is committed. Use when handed a spec or ticket to build, or when a teammate is briefed to build one.
+description: Implement the work described by a spec or a ticket, test-first at pre-agreed seams, reviewed before it is committed. Use once a written spec or ticket already exists to build from, or when a teammate is briefed to build one from its ticket.
 ---
 
 Implement the work described by the user in the spec or tickets.

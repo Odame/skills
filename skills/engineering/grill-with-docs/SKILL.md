@@ -5,3 +5,5 @@ disable-model-invocation: true
 ---
 
 Call the Skill tool twice, for "grilling" and "domain-modeling".
+
+Once the session is done, tell the user to run `/to-spec` next, per `grill-with-docs → to-spec → to-tickets → implement → code-review`.
