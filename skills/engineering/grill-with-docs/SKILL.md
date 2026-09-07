@@ -6,4 +6,4 @@ disable-model-invocation: true
 
 Call the Skill tool twice, for "grilling" and "domain-modeling".
 
-Once the session is done, tell the user to run `/to-spec` next, per `grill-with-docs → to-spec → to-tickets → implement → code-review`.
+Once the session is done, tell the user the chain, `grill-with-docs → to-spec → to-tickets → implement → code-review`, and let them pick the next step from it: `/to-spec` for the main flow, or straight to `/to-tickets` or `/implement` when the change is small enough to skip a step.
