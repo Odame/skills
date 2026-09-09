@@ -6,6 +6,14 @@ disable-model-invocation: true
 
 You are the **lead**: you dispatch, verify and merge. Teammates write the code.
 
+## Where you work
+
+One run, one repo. Stay in the directory the session started in, on the integration branch (or `--base` branch), for the whole run: that directory is `<lead dir>` in every command below. Every ticket this run dispatches must live in `<lead dir>`'s repo. Teammates write the code, each in its own worktree via `isolation: "worktree"`. That worktree comes from `<lead dir>`'s repo and cannot reach a different one. Reach another tree as an argument: `git -C <absolute path>`, and absolute paths in tool calls.
+
+An epic spanning more than one repo runs once per repo: repeat the whole loop from each repo's own checkout, scoping every command with `--repo <owner/repo>`. Blocking edges still resolve across runs: a ticket's status comes from GitHub's issue graph, not local git, so a run in one repo still sees a blocker in another repo close.
+
+Refer to tickets by name.
+
 Resolve the tool once and keep the variable for the session:
 
 ```bash
@@ -16,10 +24,10 @@ node $T --help
 ## Start
 
 ```bash
-node $T preflight --epic <id>
+node $T preflight --epic <id> --repo <owner/repo>
 ```
 
-Resolve everything it reports before dispatching. No `--base` given: this creates the epic's integration branch in every repo the run touches. See **Landing**.
+`--repo` must match `<lead dir>`: it scopes every command in this run to that repo's tickets. Resolve everything preflight reports before dispatching. No `--base` given: this creates the epic's integration branch in this run's repo. See **Landing**.
 
 ## The loop
 
@@ -63,6 +71,15 @@ Agent(
 )
 ```
 
+`isolation: "worktree"` is mandatory: it does not clean up after itself once a teammate makes changes (it will). The result carries the worktree's path and branch. **Retire** it once the ticket resolves:
+
+```bash
+git -C <lead dir> worktree remove <path>
+git -C <lead dir> worktree prune
+```
+
+See **On return** and **When a ticket stops** for when to retire and what else goes with it.
+
 The brief carries:
 
 - The ticket, as `owner/repo#number`, for the teammate to read.
@@ -79,7 +96,7 @@ Spawn every ticket, including one that looks too small to spawn and one in the r
 ```bash
 node $T check-pr --ticket <id>              # resolve everything it reports first
 node $T return --ticket <id> --pr <number>
-gh pr merge <number> --repo <repo> --squash
+gh pr merge <number> --repo <repo> --squash --delete-branch
 node $T check-merged --ticket <id>
 ```
 
@@ -88,6 +105,15 @@ Triage the `code-review` output the teammate returned. Where triage turns someth
 ```bash
 git -C <absolute worktree path> diff <base>...<branch>
 ```
+
+Once `check-merged` passes, sync and tear down: pull the merge into the lead's own checkout, retire the teammate's worktree (**Dispatch**), and drop the now-dead local branch (`--delete-branch` above already dropped the remote one).
+
+```bash
+git -C <lead dir> pull --ff-only
+git -C <lead dir> branch -D <branch>
+```
+
+`<path>` and `<branch>` are what the ticket's `Agent` call returned at dispatch. On a resumed run where that is gone, recover `<path>` from `git -C <lead dir> worktree list --porcelain` by matching `<branch>` to the ticket's branch. A merged ticket leaves nothing behind: no worktree, no local branch, no remote branch.
 
 ## When a ticket stops
 
@@ -105,9 +131,13 @@ node $T hand-back --ticket <id> --stuck --reason "<what would unblock it>"
 
 Reach for `--stuck` once `--blocked-on` is ruled out.
 
+Either way, the teammate's `Agent` call has ended: retire its worktree (**Dispatch**) so the next dispatch cannot collide with it.
+
+Leave the branch alone. Its commits are the only copy of that work until the ticket is reclaimed and merged, at which point **On return**'s cleanup deletes it.
+
 ## Landing
 
-By default a run lands on `epic/<number>-<slug>`, an integration branch `preflight` names after the epic and creates if it does not exist. Every ticket's PR targets it, not `main`, so merge each one same as any other on-return step, no approval needed: it is not shared history yet. Close each ticket by hand once its PR is merged (a merge into an integration branch does not close it), and open, never merge, the final PR from `epic/<number>-<slug>` into `main` once the frontier reports the run finished.
+By default a run lands on `epic/<number>-<slug>`, an integration branch `preflight` names after the epic and creates if it does not exist. Every ticket's PR targets it, not `main`, so merge each one same as any other on-return step, no approval needed: it is not shared history yet. Close each ticket by hand once its PR is merged (a merge into an integration branch does not close it), and open, never merge, the final PR from `epic/<number>-<slug>` into `main` once the frontier reports the run finished. An epic spanning more than one repo gets one `epic/<number>-<slug>` branch and one final PR per repo, each from that repo's own run.
 
 Pass `--base <branch>` to `preflight` and `claim` to land somewhere else instead: an existing branch, or a new one you name. Creates it if it doesn't exist yet, same as the epic default. Pass your repo's actual default branch (e.g. `--base main`) to skip an integration branch entirely: tickets then close on merge, and there is no final PR to open.
 
@@ -123,8 +153,3 @@ Monitor(command: "node $T watch --epic <id>", description: "<epic name> tickets"
 
 State the model on every spawn. Use `sonnet`. Choose `opus` where the ticket needs judgment no spec can pre-make, and say why as you choose it. Report the split at the end.
 
-## Where you work
-
-Work from the directory the session started in. Reach another tree as an argument: `git -C <absolute path>`, and absolute paths in tool calls.
-
-Refer to tickets by name.
