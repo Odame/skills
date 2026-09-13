@@ -52,7 +52,7 @@ Run it until `frontier` exits `0`.
 | Status     | Your move                 |
 | ---------- | ------------------------- |
 | `READY`    | Claim and dispatch it     |
-| `BUILDING` | Wait                      |
+| `BUILDING` | Wait, or nudge it (**Resuming a teammate**) |
 | `REVIEW`   | Verify and merge it       |
 | `BLOCKED`  | Leave it; it frees itself |
 | `STUCK`    | Report it and carry on    |
@@ -79,6 +79,10 @@ git -C <lead dir> worktree prune
 ```
 
 See **On return** and **When a ticket stops** for when to retire and what else goes with it.
+
+### Resuming a teammate
+
+Resume an idle teammate with `SendMessage(to: "tkt-1126", ...)`, never a second `Agent` call with that name: the second call spawns a duplicate into the same worktree instead of resuming.
 
 The brief carries:
 
