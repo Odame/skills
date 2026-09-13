@@ -1,5 +1,11 @@
 # odame-skills
 
+## 1.6.3
+
+### Patch Changes
+
+- [#35](https://github.com/Odame/skills/pull/35) [`f524906`](https://github.com/Odame/skills/commit/f5249063dfe1c02d392c20ddec1bcf3464cc46f5) Thanks [@Odame](https://github.com/Odame)! - fix(implement-with-agent-team): resume an idle teammate with `SendMessage`. Never call `Agent` again with the same name. That spawns a duplicate into the shared worktree.
+
 ## 1.6.2
 
 ### Patch Changes
