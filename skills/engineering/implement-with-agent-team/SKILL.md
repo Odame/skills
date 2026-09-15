@@ -52,7 +52,7 @@ Run it until `frontier` exits `0`.
 | Status     | Your move                 |
 | ---------- | ------------------------- |
 | `READY`    | Claim and dispatch it     |
-| `BUILDING` | Wait, or nudge it (**Resuming a teammate**) |
+| `BUILDING` | Nudge it, every pass (**Resuming a teammate**): a past reply proves nothing about now |
 | `REVIEW`   | Verify and merge it       |
 | `BLOCKED`  | Leave it; it frees itself |
 | `STUCK`    | Report it and carry on    |
@@ -60,14 +60,37 @@ Run it until `frontier` exits `0`.
 
 ## Dispatch
 
-One teammate, one ticket.
+One teammate, one ticket. Spawn every ticket, including one that looks too small to spawn and one in the repository you are already sitting in. Where a ticket seems undelegatable, add the missing fact to its prompt, or hand it back.
+
+The prompt is fixed: fill the blanks, never rewrite it. It starts with the skill invocation itself, so it fires without depending on the teammate's own judgement to call it.
+
+```
+/odame-skills:implement <owner/repo>#<number>
+
+Branch: <branch>, onto <base>
+Base off the CURRENT tip of `origin/<base>`, not a stale local copy: other tickets merge into it while you build.
+
+Any sub-agent you launch, for any step, can stall. Watch it: don't wait on one indefinitely. `TaskStop` it. Then recover the step the way its own purpose demands. Relaunch a fresh sub-agent if it needed a separate context, an independent review, for instance. Finish it yourself only if it didn't. When the lead pings you, re-check every sub-agent you still have running before you reply, and report what that check just found, not what you last assumed.
+
+Commit as you go. Push once, right before opening the PR: a push per commit reruns the pre-push hook every time for nothing.
+
+Open a PR when green, with `Closes #<number>` in the body.
+
+Return:
+- The PR number.
+- What you ran, and its counts.
+- The code-review output, verbatim.
+- One fix-or-refute-with-evidence line per finding.
+
+Where a rule in the ticket is wrong or impossible, say so with evidence.
+```
 
 ```
 Agent(
   name: "tkt-1126",
   model: "sonnet",
   isolation: "worktree",
-  prompt: <the brief>
+  prompt: <the fixed prompt above, blanks filled>
 )
 ```
 
@@ -78,22 +101,25 @@ git -C <lead dir> worktree remove <path>
 git -C <lead dir> worktree prune
 ```
 
-See **On return** and **When a ticket stops** for when to retire and what else goes with it.
+See **On return**, **When a ticket stops**, and **A stalled teammate** for when to retire and what else goes with it.
 
-### Resuming a teammate
+## Resuming a teammate
 
 Resume an idle teammate with `SendMessage(to: "tkt-1126", ...)`, never a second `Agent` call with that name: the second call spawns a duplicate into the same worktree instead of resuming.
 
-The brief carries:
+The prompt requires every teammate to re-check its own sub-agents before answering a ping. Trust a reply only if it reports what that fresh check found, never a status repeated from memory. No reply, or one that cannot produce that, past how long that kind of step normally takes (a review finishing in hours, not minutes): see **A stalled teammate**.
 
-- The ticket, as `owner/repo#number`, for the teammate to read.
-- Invoke the `implement` skill and follow it.
-- The branch and base that `claim` printed.
-- Open a PR when green, with `Closes #<number>` in the body.
-- Return the PR number, what was run and its counts, the `code-review` output verbatim, and one fix-or-refute-with-evidence line per finding.
-- Say so with evidence where a rule in the ticket is wrong or impossible.
+## A stalled teammate
 
-Spawn every ticket, including one that looks too small to spawn and one in the repository you are already sitting in. Where a ticket seems undelegatable, add the missing fact to its brief, or hand it back.
+A teammate can freeze mid-turn for any reason. The trigger to check is elapsed time past the normal range for whatever it's doing. Transcript growth alone does not clear it: a stalled process can still emit trivial keep-alive activity (a no-op `Bash: true`, seen in practice) that keeps the transcript growing while nothing real happens. Once triggered, read the transcript's actual content, not just whether it moved. Whether it has a free turn to notice this itself varies; do not assume either way.
+
+Check first whether it launched a sub-agent of its own, for any reason: that sub-agent is a likely cause (`odame-skills:code-review`'s standards/spec reviewers are one observed case, not the only possible one). Run `ListAgents`, find the child by its `joined` time (the name's shape varies by run and by what spawned it; read the roster, never match a fixed string), and `TaskStop` it. This frees the teammate's own `Agent` call but does not guarantee it resumes, so give it a couple more pings.
+
+Still stuck after that, do not guess that it is gone. Confirm it: `TaskStop` the teammate itself, `task_id` its bare name (e.g. `tkt-1126`). Only once that returns success is it actually dead.
+
+Never touch a teammate's worktree before that confirmation. A live process writing into a worktree the lead just deleted, or a second teammate racing it on the same branch, is worse than waiting longer.
+
+Once confirmed dead, retire its worktree (**Dispatch**) and re-dispatch fresh: `node $T claim --ticket <id> --model <model> --redispatch`, then a new `Agent` call like any other ticket. Give it a new name; never reuse a name once dispatched. Its commits are already on the branch, so the new teammate picks up from there. Never write the ticket's code yourself.
 
 ## On return
 
