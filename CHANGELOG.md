@@ -1,5 +1,11 @@
 # odame-skills
 
+## 1.6.4
+
+### Patch Changes
+
+- [#37](https://github.com/Odame/skills/pull/37) [`4779636`](https://github.com/Odame/skills/commit/4779636f66b8ac9726c2c9e13dfe43c93fff37d5) Thanks [@Odame](https://github.com/Odame)! - fix(implement-with-agent-team): fix the dispatch prompt into a template, and add stalled-teammate detection and recovery to the lead's loop, instead of the lead improvising a prompt and pinging blind.
+
 ## 1.6.3
 
 ### Patch Changes
