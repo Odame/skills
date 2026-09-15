@@ -13,6 +13,6 @@ Run typechecking regularly, single test files regularly, and the full test suite
 
 Re-run the whole ledger with `--reverify` once you believe the work is done. A gate whose evidence is missing or still `pending` is not met. Do not report the work as complete while any gate is unmet: either finish it, or record `ABANDON: <id> <reason>` and hand it back.
 
-Once done, use /code-review to review the work.
+Once done, use `odame-skills:code-review` to review the work.
 
 Commit your work to the current branch.
