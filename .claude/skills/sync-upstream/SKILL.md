@@ -23,7 +23,7 @@ fork as level with upstream.
 Work on a branch cut from `origin/main`, never on `main` itself.
 
 ```bash
-git fetch origin upstream
+git fetch --multiple origin upstream
 git switch -c chore/update-from-upstream origin/main
 git merge --no-ff upstream/main
 ```
