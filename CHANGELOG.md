@@ -1,5 +1,13 @@
 # odame-skills
 
+## 1.6.5
+
+### Patch Changes
+
+- [#1092](https://github.com/mattpocock/skills/pull/1092) [`d75dcf1`](https://github.com/Odame/skills/commit/d75dcf1c5bccfab736ab79f494fa248980546d45) Thanks [@mattpocock](https://github.com/mattpocock)! - Add the `pr` skill (in-progress bucket, model-invoked). It's a reference for the shape a pull request body should take, not a workflow: the template comes first, then a short section per part of it. The summary comes from the primary source (the issue or spec), never inferred from the diff; the body states size and a one-way/two-way door call up front; "the shape of the change" reproduces `show-me` almost verbatim (credited in the skill's `CREDITS.md`), aimed at a diff instead of a conversation; evidence is a before/after pair (visual first, a failing-then-passing test run where no visual exists); and what was deliberately left out gets its own section. Relates to [#521](https://github.com/Odame/skills/issues/521), [#938](https://github.com/Odame/skills/issues/938), [#509](https://github.com/Odame/skills/issues/509), and [#915](https://github.com/Odame/skills/issues/915).
+
+- [#1083](https://github.com/mattpocock/skills/pull/1083) [`6942bff`](https://github.com/Odame/skills/commit/6942bff8a53666e83a2c621696d2a8e3022429e6) Thanks [@mattpocock](https://github.com/mattpocock)! - retro: classify coding-standards findings as mechanical or judgement calls before writing them. A mechanical violation (a fixed syntactic pattern, a banned API, an import shape, a file-location rule) now gets a deterministic check instead (a linter rule, a pre-commit hook, or a CI job), reserving `CODING_STANDARDS.md` for genuine judgement calls. Automated checks also now flags a repo with no guardrail at all (no pre-commit hook, no CI lint/typecheck/test job) as a finding in its own right.
+
 ## 1.6.4
 
 ### Patch Changes
