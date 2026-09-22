@@ -5,8 +5,8 @@ carries the divergences below. Each row is a content shape,
 checked by [`scripts/verify-patches.mjs`](./scripts/verify-patches.mjs)
 against present/absent marker strings, not a commit count: a divergence can
 land as several commits over time (`engineering/implement-with-agent-team`
-has), and `git rebase upstream/main` replays each of those individually
-rather than one clean commit.
+has), and a merge from upstream can undo one inside a conflict resolution
+without touching any of those commits.
 
 | What                                                                                               | Divergence                                                                                                                                                      | Why                                                                                                                                                                                                                                                                                                                                                                        |
 | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -27,20 +27,28 @@ Ask any agent working in this repo to sync with upstream; it loads
 [`.claude/skills/sync-upstream`](./.claude/skills/sync-upstream/SKILL.md). By hand:
 
 ```bash
-git fetch upstream
-git rebase upstream/main
+git fetch origin upstream
+git switch -c chore/update-from-upstream origin/main
+git merge --no-ff upstream/main
 node scripts/verify-patches.mjs   # expects: PATCHES OK
 claude plugin validate . --strict
-git push --force-with-lease origin main
+git push -u origin chore/update-from-upstream
+gh pr create --base main && gh pr merge --merge
 ```
+
+Merge, never rebase: releases are cut from `main`, and a rebase would push every
+published tag out of its history. Land the pull request with a merge commit, not
+squash or rebase-merge, so Matt's commits keep their SHAs. Upstream changesets
+name `"mattpocock-skills"`; rename each to `"odame-skills"` or the release job
+fails.
 
 Resolve conflicts by intent, not by side: take upstream's rewritten wording as
 the base, then restate the divergence in it. `verify-patches.mjs` checks every
-divergence in both directions, so a rebase that silently reverts one turns red
+divergence in both directions, so a merge that silently reverts one turns red
 rather than passing.
 
 ## Retiring a divergence
 
 A divergence exists to be deleted. When upstream's version does the same job,
 take it whole and remove the row here **and** its entry in
-`scripts/verify-patches.mjs`. A fork that only grows is a fork nobody rebases.
+`scripts/verify-patches.mjs`. A fork that only grows is a fork nobody keeps in sync.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Fails when a divergence recorded in PATCHES.md is no longer in the tree.
-// A rebase onto upstream can drop one silently: the rebase succeeds, the skill
+// A sync with upstream can drop one silently: the merge succeeds, the skill
 // reverts to upstream's wording, and nothing says so.
 
 import { readFileSync } from "node:fs";

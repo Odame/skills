@@ -17,7 +17,7 @@
 > Every skill here is **[Matt Pocock](https://www.aihero.dev)'s** work, used under
 > his [MIT licence](./LICENSE). This copy exists only to carry a few local
 > changes, each one listed in **[PATCHES.md](./PATCHES.md)**. Everything else
-> tracks his repo and is rebased onto it.
+> tracks his repo and merges it in.
 >
 > Start at [the original](https://github.com/mattpocock/skills), and
 > [join his newsletter](https://www.aihero.dev/s/skills-newsletter) if these are
@@ -142,9 +142,9 @@ One skill has no upstream counterpart:
   PR closes its ticket. A lead that missed a notification therefore loses nothing.
 
 `scripts/verify-patches.mjs` checks both directions of every divergence: that its
-text is present, and that upstream's superseded text has not come back. A rebase
+text is present, and that upstream's superseded text has not come back. A merge
 that quietly drops one turns it red. `.claude/skills/sync-upstream/SKILL.md`
-drives the rebase and refuses to publish while it is.
+drives the merge and refuses to publish while it is.
 
 A divergence exists to be deleted. When Matt's version does the same job, the
 local change is retired rather than defended.
