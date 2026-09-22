@@ -27,7 +27,7 @@ Ask any agent working in this repo to sync with upstream; it loads
 [`.claude/skills/sync-upstream`](./.claude/skills/sync-upstream/SKILL.md). By hand:
 
 ```bash
-git fetch origin upstream
+git fetch --multiple origin upstream
 git switch -c chore/update-from-upstream origin/main
 git merge --no-ff upstream/main
 node scripts/verify-patches.mjs   # expects: PATCHES OK
