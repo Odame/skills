@@ -48,6 +48,12 @@ const divergences = [
     ],
   },
   {
+    name: "design-prompt-writer ships",
+    file: ".claude-plugin/plugin.json",
+    present: ['"./skills/productivity/design-prompt-writer"'],
+    absent: [],
+  },
+  {
     name: "releases are cut from this fork, not upstream",
     file: ".changeset/config.json",
     present: ['"repo": "Odame/skills"'],

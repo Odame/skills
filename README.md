@@ -133,13 +133,18 @@ the reasoning for each.
   ledger before coding, and re-verifies it before reporting the work done. It is
   also model-invocable here, so a teammate can reach it on its own.
 
-One skill has no upstream counterpart:
+Two skills have no upstream counterpart:
 
 - **[`implement-with-agent-team`](./skills/engineering/implement-with-agent-team/SKILL.md)**
   builds a set of tickets in parallel, as far as their blocking edges allow, with
   one fresh teammate per ticket. It keeps no state of its own: the graph is the
   tickets' native blocked-by links, progress is open versus closed, and a merged
   PR closes its ticket. A lead that missed a notification therefore loses nothing.
+- **[`design-prompt-writer`](./skills/productivity/design-prompt-writer/SKILL.md)**
+  turns a brand, brief, audience, references, and creative standards into a
+  foundation prompt for a new Claude Design project. It interviews for facts
+  only; color, typeface, and layout are perceptual choices, left to Claude
+  Design's own visual interview instead of asked for in words.
 
 `scripts/verify-patches.mjs` checks both directions of every divergence: that its
 text is present, and that upstream's superseded text has not come back. A merge
@@ -288,6 +293,7 @@ General workflow tools, not code-specific.
 
 **User-invoked**
 
+- **[design-prompt-writer](./skills/productivity/design-prompt-writer/SKILL.md)**: Turn a brand, brief, audience, references, and creative standards into a foundation prompt for a new Claude Design project.
 - **[grill-me](./skills/productivity/grill-me/SKILL.md)**: Get relentlessly interviewed about a plan or design until every branch of the design tree is resolved.
 - **[handoff](./skills/productivity/handoff/SKILL.md)**: Compact the current conversation into a handoff document so another agent can continue the work.
 - **[teach](./skills/productivity/teach/SKILL.md)**: Teach the user a new skill or concept over multiple sessions, using the current directory as a stateful teaching workspace.
