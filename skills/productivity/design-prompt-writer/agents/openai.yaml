@@ -1,0 +1,5 @@
+interface:
+  display_name: "Design Prompt Writer"
+  short_description: "Turn a brand and brief into a Claude Design foundation prompt"
+policy:
+  allow_implicit_invocation: false
