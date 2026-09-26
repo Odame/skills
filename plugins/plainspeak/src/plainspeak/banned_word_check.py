@@ -43,5 +43,6 @@ register_check(
         settings_of=_settings_of,
         detect=_detect,
         describe=_describe,
+        records_terms_in_tracking=True,
     )
 )

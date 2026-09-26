@@ -3,6 +3,7 @@
 import json
 import sqlite3
 import sys
+from collections.abc import Iterable
 from importlib import resources
 from pathlib import Path
 
@@ -10,14 +11,17 @@ from plainspeak.checks import Severity, emit_findings, run_checks
 from plainspeak.config import load_config
 from plainspeak.hook_payload import changed_text_segments, session_id_of
 from plainspeak.paths import LIVE_PATHS
-from plainspeak.tracking import BLOCK_OUTCOME, WARN_OUTCOME, record_outcome
+from plainspeak.tracking import BLOCK_OUTCOME, NO_TERM, WARN_OUTCOME, record_outcome
+from plainspeak.wordlist import load_wordlist
 
 SEED_WORDLIST_RESOURCE = "seed_wordlist.txt"
 SEED_CONFIG_RESOURCE = "seed_config.toml"
 POST_TOOL_USE_EVENT_NAME = "PostToolUse"
 
 
-def _record_outcome_without_failing_the_check(payload: dict, check_name: str, outcome: str) -> None:
+def _record_outcome_without_failing_the_check(
+    payload: dict, check_name: str, outcome: str, term: str
+) -> None:
     """Tracking is a usage signal, so a broken store must never change a check's outcome."""
     try:
         record_outcome(
@@ -25,6 +29,7 @@ def _record_outcome_without_failing_the_check(payload: dict, check_name: str, ou
             session_id=session_id_of(payload),
             check_name=check_name,
             outcome=outcome,
+            term=term,
         )
     except (sqlite3.Error, OSError):
         pass
@@ -52,7 +57,8 @@ def check(argv: list[str]) -> int:
     findings = run_checks(written_text, settings)
     for finding in findings:
         outcome = BLOCK_OUTCOME if finding.severity is Severity.BLOCK else WARN_OUTCOME
-        _record_outcome_without_failing_the_check(payload, finding.check_name, outcome)
+        for term in finding.terms or (NO_TERM,):
+            _record_outcome_without_failing_the_check(payload, finding.check_name, outcome, term)
 
     return emit_findings(findings, additional_context_output=_additional_context_output)
 
@@ -132,13 +138,77 @@ def _copy_seed_file(live_path: Path, resource_name: str) -> None:
     live_path.write_text(seed_text, encoding="utf-8")
 
 
-COMMANDS = {"check": check, "seed": seed, "ban": ban, "unban": unban}
+def list_terms(argv: list[str]) -> int:
+    """Print every term list plainspeak matches against, so no file needs opening by hand."""
+    from plainspeak import idiom_check
+
+    settings = load_config(LIVE_PATHS.config_path)
+    _print_term_list("banned words", load_wordlist(LIVE_PATHS.wordlist_path))
+    _print_term_list("wordfreq allowlist", settings.wordfreq.allowlist)
+    _print_term_list("idiom allowlist", settings.idiom.allowlist)
+    _print_term_list("bundled idioms", idiom_check.bundled_idioms())
+    return 0
+
+
+def _print_term_list(label: str, terms: Iterable[str]) -> None:
+    terms = list(terms)
+    print(f"{label} ({len(terms)}):")
+    for term in terms:
+        print(f"  {term}")
+    print()
+
+
+def stats(argv: list[str]) -> int:
+    """Print each check's block/warn totals, plus its top flagged terms where recorded."""
+    from plainspeak.tracking import summarize
+
+    summaries = summarize(LIVE_PATHS.tracking_database_path)
+    if not summaries:
+        print("no data recorded yet")
+        return 0
+
+    for summary in summaries:
+        print(
+            f"{summary.check_name} ({summary.outcome}): {summary.total} total since {summary.since}"
+        )
+        for term, count in summary.top_terms:
+            print(f"  {term}  {count}")
+        print()
+    return 0
+
+
+COMMANDS = {
+    "check": check,
+    "seed": seed,
+    "ban": ban,
+    "unban": unban,
+    "list": list_terms,
+    "stats": stats,
+}
+
+USAGE = f"usage: plainspeak {{{','.join(COMMANDS)}}} ..."
+
+HELP_FLAGS = {"--help", "-h"}
 
 
 def main() -> None:
+    """Dispatch to a subcommand, printing usage instead of ever silently running `check`.
+
+    `check` reads stdin and blocks waiting for it, so a typo'd or missing subcommand
+    must never fall through to it: an interactive `plainspeak` or `plainspeak status`
+    would otherwise hang instead of failing loudly.
+    """
     argv = sys.argv[1:]
-    command_name = argv[0] if argv and argv[0] in COMMANDS else "check"
-    remaining = argv[1:] if argv and argv[0] in COMMANDS else argv
+    if not argv or argv[0] in HELP_FLAGS:
+        print(USAGE)
+        sys.exit(0)
+
+    command_name, remaining = argv[0], argv[1:]
+    if command_name not in COMMANDS:
+        print(f"plainspeak: unknown command '{command_name}'", file=sys.stderr)
+        print(USAGE, file=sys.stderr)
+        sys.exit(1)
+
     sys.exit(COMMANDS[command_name](remaining))
 
 
