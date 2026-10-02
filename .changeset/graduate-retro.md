@@ -1,5 +1,5 @@
 ---
-"mattpocock-skills": minor
+"odame-skills": minor
 ---
 
 Graduate **`retro`** into the **Engineering** bucket, so it ships in the Claude Code plugin, gets a docs page, and is routed by `ask-matt` as the last step of the main flow, after `code-review`.

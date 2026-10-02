@@ -1,5 +1,5 @@
 ---
-"mattpocock-skills": minor
+"odame-skills": minor
 ---
 
 Graduate **`pr`** into the **Engineering** bucket, so it ships in the Claude Code plugin, gets a docs page, and is routed by `ask-matt` as the PR-body close-out.
