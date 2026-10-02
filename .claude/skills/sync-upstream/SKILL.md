@@ -33,7 +33,11 @@ as the base, then restate the divergence in Matt's new wording. Choosing "ours"
 wholesale reverts his improvements to the rest of the file; choosing "theirs"
 drops the divergence. Neither is the answer.
 
-If a conflict is large, invoke `/resolving-merge-conflicts`.
+Work a large conflict hunk by hunk. Read the merge base (`git show :1:<file>`)
+next to both sides, so you see what each side changed, not only where they ended.
+
+A whole file that one side deleted and the other side changed is usually an
+upstream changeset this fork already released. Keep it deleted.
 
 ## Rename the package in upstream changesets
 
