@@ -1,5 +1,11 @@
 # odame-skills
 
+## 1.9.0
+
+### Minor Changes
+
+- [#48](https://github.com/Odame/skills/pull/48) [`43328dd`](https://github.com/Odame/skills/commit/43328ddccb84d5f329c2146d4f7be75d3b7b77ac) Thanks [@Odame](https://github.com/Odame)! - Return **`implement`** to upstream's version. It is user-invoked again (type `/implement`), and it no longer writes an `unlazy` `GATES.md` ledger. Both divergences are retired: the teammate that needed to reach it on its own went with `implement-with-agent-team`. `implement` and `implement-spec` now call `odame-skills:code-review` by its plugin name, so they never reach Claude Code's built-in `code-review` skill by mistake.
+
 ## 1.8.0
 
 ### Minor Changes
