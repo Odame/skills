@@ -1,5 +1,11 @@
 # odame-skills
 
+## 1.8.0
+
+### Minor Changes
+
+- [#46](https://github.com/Odame/skills/pull/46) [`ea59644`](https://github.com/Odame/skills/commit/ea59644c12eeb3a91d4fa9f4a3f99281f91570dc) Thanks [@Odame](https://github.com/Odame)! - Move **`implement-with-agent-team`** to `deprecated/`. Upstream's [`implement-spec`](https://github.com/Odame/skills/blob/main/skills/engineering/implement-spec/SKILL.md) now builds a whole spec in one run, so the fork's own version is no longer needed. It leaves the Claude Code plugin, the README, the `ask-matt` router and its docs page. Its teammate-model hook goes with it. The skill stays in the repo so it can come back.
+
 ## 1.7.0
 
 ### Minor Changes
