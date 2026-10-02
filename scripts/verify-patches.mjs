@@ -17,16 +17,16 @@ const divergences = [
     absent: ["whole frontier in one round"],
   },
   {
-    name: "implement gates the work with unlazy",
+    name: "implement calls this plugin's code-review",
     file: "skills/engineering/implement/SKILL.md",
-    present: ['Skill tool with "unlazy"', "--reverify", "GATES.md"],
-    absent: [],
+    present: ["`odame-skills:code-review`"],
+    absent: ["use /code-review"],
   },
   {
-    name: "implement is reachable by a teammate",
-    file: "skills/engineering/implement/SKILL.md",
-    present: ["description: Implement the work described"],
-    absent: ["disable-model-invocation"],
+    name: "implement-spec calls this plugin's code-review",
+    file: "skills/engineering/implement-spec/SKILL.md",
+    present: ["`odame-skills:code-review`"],
+    absent: ["Skill tool with `code-review`"],
   },
   {
     name: "releases are cut from this fork, not upstream",
