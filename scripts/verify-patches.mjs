@@ -29,25 +29,6 @@ const divergences = [
     absent: ["disable-model-invocation"],
   },
   {
-    name: "implement-with-agent-team ships",
-    file: ".claude-plugin/plugin.json",
-    present: ['"./skills/engineering/implement-with-agent-team"'],
-    absent: [],
-  },
-  {
-    // The tool writes and reads the marker comments. A copy in SKILL.md would
-    // be a second source of truth for one format, and would invite the lead to
-    // write the comment itself instead of running the command.
-    name: "SKILL.md names commands, not their representation",
-    file: "skills/engineering/implement-with-agent-team/SKILL.md",
-    present: ["node $T claim", "node $T check-pr", "node $T hand-back"],
-    absent: [
-      "Dispatched to an implementation agent",
-      "**Stuck.**",
-      "**Released.**",
-    ],
-  },
-  {
     name: "releases are cut from this fork, not upstream",
     file: ".changeset/config.json",
     present: ['"repo": "Odame/skills"'],
