@@ -53,6 +53,12 @@ const divergences = [
     absent: [],
   },
   {
+    name: "install blocks name this fork, not upstream",
+    file: "README.md",
+    present: ["codex plugin add odame-skills@odame", "copilot plugin install odame-skills@odame", "npx skills@latest add Odame/skills"],
+    absent: ["codex plugin add mattpocock-skills@mattpocock", "copilot plugin install mattpocock-skills@mattpocock", "npx skills@latest add mattpocock/skills"],
+  },
+  {
     name: "the marketplace is named for this fork",
     file: ".claude-plugin/marketplace.json",
     present: ['"name": "odame"', '"name": "odame-skills"'],
