@@ -1,5 +1,11 @@
 # odame-skills
 
+## 1.10.0
+
+### Minor Changes
+
+- [#52](https://github.com/Odame/skills/pull/52) [`38ff279`](https://github.com/Odame/skills/commit/38ff279fb67852d31080d4ad2afbc92e3c6fd5e5) Thanks [@Odame](https://github.com/Odame)! - `pr` now also writes the PR title, as a Conventional Commit: `type(scope): summary`. The summary says what the diff changes.
+
 ## 1.9.1
 
 ### Patch Changes
