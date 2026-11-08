@@ -29,6 +29,12 @@ const divergences = [
     absent: ["Skill tool with `code-review`"],
   },
   {
+    name: "pr writes a Conventional Commit title",
+    file: "skills/engineering/pr/SKILL.md",
+    present: ["PR title or body", "PR title: `type(scope): summary`"],
+    absent: ['"Use when writing a PR body."'],
+  },
+  {
     name: "releases are cut from this fork, not upstream",
     file: ".changeset/config.json",
     present: ['"repo": "Odame/skills"'],

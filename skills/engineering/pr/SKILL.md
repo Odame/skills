@@ -1,6 +1,6 @@
 ---
 name: pr
-description: "Use when writing a PR body."
+description: "Use when writing a PR title or body."
 metadata:
   credits:
     skill: show-me
@@ -8,6 +8,8 @@ metadata:
     organisation: Humanlayer
     url: "https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md"
 ---
+
+PR title: `type(scope): summary`, as in Conventional Commits. The summary says what the diff changes. Use the imperative and about 60 characters: `fix(test-users): treat "No Partner account" step as signed in`.
 
 Use this template for writing the PR body:
 
