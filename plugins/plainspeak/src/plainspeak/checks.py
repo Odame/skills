@@ -32,6 +32,14 @@ class CheckSpec:
     settings_of: Callable[[CheckerSettings], Toggleable]
     detect: Callable[[str, Toggleable], list[str]]
     describe: Callable[[list[str]], str]
+    records_terms_in_tracking: bool = False
+    """Whether a hit's literal text may be written to the tracking database.
+
+    Only true for a check whose hits are drawn from a fixed, non-sensitive vocabulary
+    the user themselves configured (the banned wordlist, the bundled idiom list), never
+    for a check whose hits are excerpts of the user's own file content (wordfreq's
+    words, textstat's sentences), per the counts-only privacy design in docs/adr/0003.
+    """
 
 
 @dataclass(frozen=True)
@@ -39,6 +47,7 @@ class Finding:
     check_name: str
     severity: Severity
     message: str
+    terms: tuple[str, ...] = ()
 
 
 CHECKS: list[CheckSpec] = []
@@ -60,7 +69,8 @@ def run_checks(
             continue
         hits = spec.detect(text, check_settings)
         if hits:
-            findings.append(Finding(spec.name, spec.severity, spec.describe(hits)))
+            terms = tuple(hits) if spec.records_terms_in_tracking else ()
+            findings.append(Finding(spec.name, spec.severity, spec.describe(hits), terms))
     return findings
 
 

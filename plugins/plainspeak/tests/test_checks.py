@@ -20,6 +20,7 @@ def make_spec(
     *,
     settings: FakeSettings = FakeSettings(),
     hits: list[str] | None = None,
+    records_terms_in_tracking: bool = False,
 ) -> CheckSpec:
     return CheckSpec(
         name=name,
@@ -27,6 +28,7 @@ def make_spec(
         settings_of=lambda _settings: settings,
         detect=lambda _text, _settings: hits if hits is not None else [],
         describe=lambda found: f"{name} found: {', '.join(found)}",
+        records_terms_in_tracking=records_terms_in_tracking,
     )
 
 
@@ -39,6 +41,20 @@ def test_a_check_with_hits_produces_a_finding():
     spec = make_spec("wordfreq", Severity.WARN, hits=["idempotent"])
     findings = run_checks("some text", None, checks=[spec])
     assert findings == [Finding("wordfreq", Severity.WARN, "wordfreq found: idempotent")]
+
+
+def test_a_check_that_records_terms_carries_its_hits_on_the_finding():
+    spec = make_spec(
+        "banned-word", Severity.BLOCK, hits=["utilize", "leverage"], records_terms_in_tracking=True
+    )
+    findings = run_checks("some text", None, checks=[spec])
+    assert findings[0].terms == ("utilize", "leverage")
+
+
+def test_a_check_that_does_not_record_terms_carries_no_terms_on_the_finding():
+    spec = make_spec("textstat", Severity.WARN, hits=["a hard sentence."])
+    findings = run_checks("some text", None, checks=[spec])
+    assert findings[0].terms == ()
 
 
 def test_a_disabled_check_is_skipped_even_with_hits():

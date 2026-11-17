@@ -780,3 +780,101 @@ def test_unban_a_term_that_was_never_banned_reports_that(capsys, live_paths):
 
     assert exit_code == 0
     assert "wordlist: was not banned" in captured.out
+
+
+def test_list_prints_every_term_list(capsys, wordlist_path, config_path):
+    config_path.write_text(
+        '[wordfreq]\nallowlist = ["api"]\n[idiom]\nallowlist = ["touch base"]\n',
+        encoding="utf-8",
+    )
+
+    exit_code = cli.list_terms([])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "banned words (2):" in captured.out
+    assert "  utilize" in captured.out
+    assert "  leverage" in captured.out
+    assert "wordfreq allowlist (1):" in captured.out
+    assert "  api" in captured.out
+    assert "idiom allowlist (1):" in captured.out
+    assert "  touch base" in captured.out
+    assert "bundled idioms (" in captured.out
+
+
+def test_stats_with_no_data_reports_that(capsys, tracking_database_path):
+    exit_code = cli.stats([])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "no data recorded yet" in captured.out
+
+
+def test_stats_reports_totals_and_top_terms(
+    monkeypatch, capsys, wordlist_path, tracking_database_path
+):
+    feed_payload(
+        monkeypatch,
+        {
+            "tool_name": "Edit",
+            "tool_input": {"old_string": "old", "new_string": "please utilize this"},
+        },
+    )
+    cli.check([])
+    capsys.readouterr()
+
+    exit_code = cli.stats([])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "banned-word (block): 1 total since" in captured.out
+    assert "  utilize  1" in captured.out
+
+
+def run_main(monkeypatch, argv: list[str]) -> int:
+    monkeypatch.setattr("sys.argv", ["plainspeak", *argv])
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+    return excinfo.value.code
+
+
+def test_main_with_no_args_prints_usage_and_exits_zero(monkeypatch, capsys):
+    exit_code = run_main(monkeypatch, [])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "usage" in captured.out
+    assert captured.err == ""
+
+
+def test_main_with_help_flag_prints_usage_and_exits_zero(monkeypatch, capsys):
+    exit_code = run_main(monkeypatch, ["--help"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "usage" in captured.out
+
+
+def test_main_with_short_help_flag_prints_usage_and_exits_zero(monkeypatch, capsys):
+    exit_code = run_main(monkeypatch, ["-h"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "usage" in captured.out
+
+
+def test_main_with_an_unknown_command_prints_usage_to_stderr_and_exits_one(monkeypatch, capsys):
+    exit_code = run_main(monkeypatch, ["status"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "unknown command 'status'" in captured.err
+    assert "usage" in captured.err
+    assert captured.out == ""
+
+
+def test_main_dispatches_a_known_command(monkeypatch, capsys, live_paths):
+    exit_code = run_main(monkeypatch, ["seed"])
+
+    assert exit_code == 0
+    assert live_paths.wordlist_path.is_file()
