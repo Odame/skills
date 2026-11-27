@@ -26,7 +26,7 @@ You invoke this by typing `/implement-spec`, and the agent won't reach for it on
 Everything lands on one branch. Each implementer:
 
 1. confirms its worktree is based on the integration branch before it starts,
-2. builds its ticket with [tdd](https://aihero.dev/skills-tdd), red-green one slice at a time,
+2. builds its ticket with [tdd](https://aihero.dev/skills-tdd), red-green one slice at a time, with every test run **scoped** to the test files the ticket reaches,
 3. merges the integration branch tip into its own branch before reporting done, so landing it is a fast-forward.
 
 The tracker decides whether a pull request exists at all. If your tracker closes work through PRs, or you ask for one, the skill opens a draft PR after the first merge and marks it ready at the end. Otherwise the run stops on the integration branch with every ticket resolved the way your tracker closes work, which works fully offline against a local markdown tracker.
@@ -63,6 +63,10 @@ This is a known problem on GitHub. The tracker's blocked-by count only drops whe
 
 No. People ask because the skills now reach into implementation: "is Sandcastle still relevant? Your skills now seem to be able to handle implementation as well." `implement-spec` puts an agent in charge of orchestration inside one harness session, which needs no infrastructure and lets you watch and steer. For work that is truly [AFK](https://www.aihero.dev/ai-coding-dictionary/afk), a deterministic loop ([Sandcastle](https://github.com/mattpocock/sandcastle), a shell script, a CI job) is faster, cheaper, and more reliable, because no agent makes the orchestration decisions.
 
+**The run spent hours running tests, and the machine slowed to a crawl.**
+
+Every implementer and merger runs at the same time on one machine. When each of them runs a full suite, the suites compete for the same CPU and database, and each one takes longer than it would alone. One user measured three hours of test time over three days of runs, nearly all of it from implementer and merger subagents. So implementers keep every test run scoped to the files their ticket reaches, a merger tests only the files it resolved by hand, and the full suite runs once, at the end, or in CI on the PR. If a trace still shows a full suite per ticket, the repo's own docs probably tell agents to run one: change them to say when a full run is needed.
+
 **A ticket's key test was skipped inside its worktree, and it reported green.**
 
 A worktree holds only what git tracks. Tests that read gitignored fixtures, local databases, or credentials can silently skip there. For a ticket whose verification depends on untracked material, tell the orchestrator to run it in the main checkout instead.
@@ -72,6 +76,7 @@ A worktree holds only what git tracks. Tests that read gitignored fixtures, loca
 - Several implementers are running at once whenever the graph allows, not one after another.
 - A ticket starts as soon as its last blocker lands on the integration branch, not when the whole run ends.
 - Every ticket's trace shows `tdd` running, with a failing test before the code.
+- Test commands in implementer and merger traces name test files. The full suite runs once, at the end.
 - Merges into the integration branch are fast-forwards, not conflict resolutions.
 - The run ends on one branch with every ticket resolved, and a PR only if your tracker wanted one.
 

@@ -27,13 +27,14 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 4. Use **implementer subagents** to implement each ticket, each in its own worktree on its own branch. Each implementer subagent:
    - confirms its worktree is based on the integration branch before starting, and resets onto it if not;
    - calls the Skill tool with `tdd` to build the ticket;
+   - keeps every test run **scoped** to the test files its ticket reaches, or the repo's affected-tests command (such as `vitest related`), and runs no full suite: every implementer shares one machine, so one full suite slows all the others;
    - merges the integration branch tip into its own branch before reporting done
 
-5. Once an **implementer subagent** completes, merge its work to the integration branch with a **merger subagent**.
+5. Once an **implementer subagent** completes, merge its work to the integration branch with a **merger subagent**. A fast-forward merge needs no test run. When the merger resolves a conflict by hand, it typechecks and runs **scoped** tests for the files it resolved.
 
 6. If this changes the **frontier** of available tickets, kick off more **implementer subagents** to work on the new tickets. This allows for maximum concurrency.
 
-7. Once all tickets are complete, call the Skill tool with `odame-skills:code-review` on the integration branch. Fix all issues raised by the code review in a single **implementer subagent**.
+7. Once all tickets are complete, call the Skill tool with `odame-skills:code-review` on the integration branch. Fix all issues raised by the code review in a single **implementer subagent**. Then run the full test suite once on the integration branch, unless CI runs it on the draft PR.
 
 8. If a draft PR exists, mark it ready for review. Otherwise, resolve each ticket the way the issue tracker closes work, and report the integration branch.
 

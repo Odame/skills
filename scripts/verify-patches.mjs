@@ -19,13 +19,13 @@ const divergences = [
   {
     name: "implement calls this plugin's code-review",
     file: "skills/engineering/implement/SKILL.md",
-    present: ["`odame-skills:code-review`"],
+    present: ["`odame-skills:code-review`", "Keep every test run **scoped**"],
     absent: ["use /code-review"],
   },
   {
     name: "implement-spec calls this plugin's code-review",
     file: "skills/engineering/implement-spec/SKILL.md",
-    present: ["`odame-skills:code-review`"],
+    present: ["`odame-skills:code-review`", "runs no full suite"],
     absent: ["Skill tool with `code-review`"],
   },
   {
