@@ -55,6 +55,13 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 - **Middle Man**: a class or function that mostly just delegates onward. → cut it, call the real target direct.
 - **Refused Bequest**: a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
 
+Tests added or changed in the diff carry four more smells of the same kind (each test costs run time on every later change):
+
+- **Test Below the Seam**: a test that reaches only a DTO, schema, mapper, model, permission table, constants or a private helper. → test the boundary that uses it, then delete this one.
+- **Mechanism Retested**: a shared mechanism (auth middleware, request validation) asserted again for one more endpoint or field. → assert the mechanism once.
+- **Tautological Assertion**: the expected value is computed the way the code computes it, so the test passes by construction. → expect a literal from the spec or a worked example.
+- **Twin Test**: the same behaviour asserted at a boundary and again on an internal service or repository. → keep the boundary test.
+
 ### 4. Spawn both sub-agents in parallel
 
 Issue both sub-agent calls together, in the foreground, and aggregate the reports they return.

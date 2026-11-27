@@ -29,6 +29,12 @@ const divergences = [
     absent: ["Skill tool with `code-review`"],
   },
   {
+    name: "code-review names four test smells",
+    file: "skills/engineering/code-review/SKILL.md",
+    present: ["Test Below the Seam", "Mechanism Retested"],
+    absent: [],
+  },
+  {
     name: "pr writes a Conventional Commit title",
     file: "skills/engineering/pr/SKILL.md",
     present: ["PR title or body", "PR title: `type(scope): summary`"],
